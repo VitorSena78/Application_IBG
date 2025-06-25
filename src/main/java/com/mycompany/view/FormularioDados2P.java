@@ -1,0 +1,864 @@
+package com.mycompany.view;
+
+import com.mycompany.model.bean.Paciente;
+import com.mycompany.model.dao.PacienteDAO;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.Period;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.awt.Insets;
+import java.awt.print.PrinterException;
+
+public class FormularioDados2P extends javax.swing.JPanel implements PatientSelectionListener {
+
+    // Lista para armazenar os registros de pacientes
+    private List<Paciente> listaPacientes;
+    Paciente paciente = new Paciente();
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+    private PacienteDAO pacienteDAO;
+    
+    // Controla se está em modo de edição
+    private boolean modoEdicao = false; 
+
+    public FormularioDados2P(PacienteDAO pacienteDAO) {
+        listaPacientes = new ArrayList<>();
+        initComponents();
+        this.pacienteDAO = pacienteDAO;
+        setupEvents();
+        setOpaque(false); // Importante para o efeito de borda funcionar
+    }
+
+    @Override
+    protected void paintComponent(Graphics grphcs) {
+        Graphics2D g2 = (Graphics2D) grphcs;
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        
+        // Define a cor de fundo
+        g2.setColor(new Color(245, 248, 250));
+        
+        // Desenha um retângulo com todos os cantos arredondados
+        g2.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
+        
+        // Sobrepõe retângulos normais para manter apenas o canto inferior direito arredondado
+        g2.fillRect(0, 0, getWidth() - 15, getHeight()); // Remove arredondamento dos cantos esquerdos e superior direito
+        g2.fillRect(0, 0, getWidth(), getHeight() - 15); // Remove arredondamento dos cantos superiores
+        
+        super.paintComponent(grphcs);
+    }
+
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        jMenuBar1 = new javax.swing.JMenuBar();
+        jMenu1 = new javax.swing.JMenu();
+        jMenu2 = new javax.swing.JMenu();
+        jMenu3 = new javax.swing.JMenu();
+
+        // Labels
+        lblTitulo = new javax.swing.JLabel();
+        lblNome = new javax.swing.JLabel();
+        lblNomeDaMae = new javax.swing.JLabel();
+        lblEndereco = new javax.swing.JLabel();
+        lblDataNascimento = new javax.swing.JLabel();
+        lblIdade = new javax.swing.JLabel();
+        lblCpf = new javax.swing.JLabel();
+        lblSus = new javax.swing.JLabel();
+        lblTelefone = new javax.swing.JLabel();
+
+        // Campos de texto
+        txtNome = new javax.swing.JTextField();
+        txtNomeDaMae = new javax.swing.JTextField();
+        txtEndereco = new javax.swing.JTextField();
+        txtDataNascimento = new javax.swing.JTextField();
+        txtIdade = new javax.swing.JTextField();
+        txtCpf = new javax.swing.JTextField();
+        txtSus = new javax.swing.JTextField();
+        txtTelefone = new javax.swing.JTextField();
+
+        // Botões
+        btnSalvar = new javax.swing.JButton();
+        btnEditar = new javax.swing.JButton();
+        btnExcluir = new javax.swing.JButton();
+        btnImprimir = new javax.swing.JButton();
+
+        jMenu1.setText("File");
+        jMenuBar1.add(jMenu1);
+
+        jMenu2.setText("Edit");
+        jMenuBar1.add(jMenu2);
+
+        jMenu3.setText("jMenu3");
+
+        // Configurar título
+        lblTitulo.setFont(new java.awt.Font("Arial", 1, 20));
+        lblTitulo.setForeground(new java.awt.Color(51, 51, 51));
+        lblTitulo.setText("Cadastro de Pacientes");
+
+        // Configurar labels
+        lblNome.setFont(new java.awt.Font("Arial", 0, 12));
+        lblNome.setText("Nome Completo:");
+
+        lblNomeDaMae.setFont(new java.awt.Font("Arial", 0, 12));
+        lblNomeDaMae.setText("Nome da Mãe:");
+
+        lblEndereco.setFont(new java.awt.Font("Arial", 0, 12));
+        lblEndereco.setText("Endereço:");
+
+        lblDataNascimento.setFont(new java.awt.Font("Arial", 0, 12));
+        lblDataNascimento.setText("Data de Nascimento:");
+
+        lblIdade.setFont(new java.awt.Font("Arial", 0, 12));
+        lblIdade.setText("Idade:");
+
+        lblCpf.setFont(new java.awt.Font("Arial", 0, 12));
+        lblCpf.setText("CPF:");
+
+        lblSus.setFont(new java.awt.Font("Arial", 0, 12));
+        lblSus.setText("Cartão do SUS:");
+
+        lblTelefone.setFont(new java.awt.Font("Arial", 0, 12));
+        lblTelefone.setText("Telefone:");
+
+        // Configurar campos de texto com tamanhos otimizados
+        
+        // Campos grandes (mais texto esperado)
+        txtNome.setFont(new java.awt.Font("Arial", 0, 12));
+        txtNome.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+
+        txtNomeDaMae.setFont(new java.awt.Font("Arial", 0, 12));
+        txtNomeDaMae.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+
+        txtEndereco.setFont(new java.awt.Font("Arial", 0, 12));
+        txtEndereco.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+
+        // Campos médios
+        txtDataNascimento.setFont(new java.awt.Font("Arial", 0, 12));
+        txtDataNascimento.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+
+        txtTelefone.setFont(new java.awt.Font("Arial", 0, 12));
+        txtTelefone.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+
+        txtSus.setFont(new java.awt.Font("Arial", 0, 12));
+        txtSus.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+
+        // Campos pequenos
+        txtCpf.setFont(new java.awt.Font("Arial", 0, 12));
+        txtCpf.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+
+        // Campo idade não editável e com aparência diferenciada
+        txtIdade.setFont(new java.awt.Font("Arial", 0, 12));
+        txtIdade.setEditable(false);
+        txtIdade.setBackground(new java.awt.Color(240, 240, 240));
+        txtIdade.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+
+        // Configurar botões
+        btnSalvar.setBackground(new java.awt.Color(76, 175, 80));
+        btnSalvar.setForeground(new java.awt.Color(255, 255, 255));
+        btnSalvar.setFont(new java.awt.Font("Arial", 1, 12));
+        btnSalvar.setText("Salvar");
+
+        btnEditar.setBackground(new java.awt.Color(255, 152, 0));
+        btnEditar.setForeground(new java.awt.Color(255, 255, 255));
+        btnEditar.setFont(new java.awt.Font("Arial", 1, 12));
+        btnEditar.setText("Editar");
+
+        btnExcluir.setBackground(new java.awt.Color(244, 67, 54));
+        btnExcluir.setForeground(new java.awt.Color(255, 255, 255));
+        btnExcluir.setFont(new java.awt.Font("Arial", 1, 12));
+        btnExcluir.setText("Excluir");
+        
+        btnImprimir.setBackground(new java.awt.Color(33, 150, 243)); // Azul
+        btnImprimir.setForeground(new java.awt.Color(255, 255, 255));
+        btnImprimir.setFont(new java.awt.Font("Arial", 1, 12));
+        btnImprimir.setText("Imprimir");
+
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
+        this.setLayout(layout);
+        layout.setHorizontalGroup(
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addGap(30, 30, 30)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(lblTitulo)
+                                        // Campos grandes (largura total - 440px)
+                                        .addComponent(lblNome)
+                                        .addComponent(txtNome, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(lblNomeDaMae)
+                                        .addComponent(txtNomeDaMae, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(lblEndereco)
+                                        .addComponent(txtEndereco, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        
+                                        // Linha com campos médios lado a lado
+                                        .addGroup(layout.createSequentialGroup()
+                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                        .addComponent(lblDataNascimento)
+                                                        .addComponent(txtDataNascimento, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                .addGap(20, 20, 20)
+                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                        .addComponent(lblIdade)
+                                                        .addComponent(txtIdade, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                .addGap(20, 20, 20)
+                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                        .addComponent(lblTelefone)
+                                                        .addComponent(txtTelefone, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                        
+                                        // Linha com campos pequenos/médios lado a lado
+                                        .addGroup(layout.createSequentialGroup()
+                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                        .addComponent(lblCpf)
+                                                        .addComponent(txtCpf, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                .addGap(20, 20, 20)
+                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                        .addComponent(lblSus)
+                                                        .addComponent(txtSus, javax.swing.GroupLayout.PREFERRED_SIZE, 260, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                        
+                                        // Botões
+                                        .addGroup(layout.createSequentialGroup()
+                                                .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addGap(18, 18, 18)
+                                                .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addGap(18, 18, 18)
+                                                .addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addGap(64, 64, 64)
+                                                .addComponent(btnImprimir, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addContainerGap(30, Short.MAX_VALUE))
+        );
+        layout.setVerticalGroup(
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addGap(25, 25, 25)
+                                .addComponent(lblTitulo)
+                                .addGap(25, 25, 25)
+                                
+                                // Campos grandes
+                                .addComponent(lblNome)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(txtNome, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(15, 15, 15)
+                                
+                                .addComponent(lblNomeDaMae)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(txtNomeDaMae, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(15, 15, 15)
+                                
+                                .addComponent(lblEndereco)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(txtEndereco, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(15, 15, 15)
+                                
+                                // Linha com Data, Idade e Telefone
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(lblDataNascimento)
+                                        .addComponent(lblIdade)
+                                        .addComponent(lblTelefone))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(txtDataNascimento, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(txtIdade, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(txtTelefone, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(15, 15, 15)
+                                
+                                // Linha com CPF e SUS
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(lblCpf)
+                                        .addComponent(lblSus))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(txtCpf, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(txtSus, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(30, 30, 30)
+                                
+                                // Botões
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(btnImprimir, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addContainerGap(30, Short.MAX_VALUE))
+        );
+        
+        // Define tamanho preferido do painel - AJUSTADO para as mesmas dimensões do Formulario2
+        this.setPreferredSize(new Dimension(500, 620)); // Reduzido devido à otimização do layout
+    }// </editor-fold>//GEN-END:initComponents
+
+    //Método para preencher os campos do formulário com dados da tabela
+    public void preencherCamposComDadosTabela(Paciente patientData) {
+        if (patientData != null) {
+            // Preencher os campos com os dados da tabela
+            txtNome.setText(patientData.getNome() != null ? patientData.getNome().toString() : "");
+            txtDataNascimento.setText(patientData.getDataNascimento() != null ? patientData.getDataNascimento().toString() : "");
+            txtIdade.setText(patientData.getIdade() != null ? patientData.getIdade().toString() : "");
+            txtNomeDaMae.setText(patientData.getNomeDaMae() != null ? patientData.getNomeDaMae().toString() : "");
+            txtCpf.setText(patientData.getCpf() != null ? patientData.getCpf().toString() : "");
+            txtSus.setText(patientData.getSus() != null ? patientData.getSus().toString() : "");
+            txtTelefone.setText(patientData.getTelefone() != null ? patientData.getTelefone().toString() : "");
+            txtEndereco.setText(patientData.getEndereco() != null ? patientData.getEndereco().toString() : "");
+
+            aplicarBloqueioCondicional();
+            modoEdicao = false; // Garantir que não está em modo edição
+        }
+    }
+    
+    private void aplicarBloqueioCondicional() {
+        JTextField[] campos = {
+            txtNome, txtDataNascimento, txtNomeDaMae, txtCpf, 
+            txtSus, txtTelefone, txtEndereco
+        };
+
+        for (JTextField campo : campos) {
+            if (!campo.getText().trim().isEmpty() && !modoEdicao) {
+                campo.setEditable(false);
+                campo.setBackground(new Color(240, 240, 240)); // Cor de campo bloqueado
+            } else {
+                campo.setEditable(true);
+                campo.setBackground(Color.WHITE); // Cor normal
+            }
+        }
+
+        //Idade sempre permanecem não editáveis
+        txtIdade.setEditable(false);
+        txtIdade.setBackground(new Color(240, 240, 240));
+    }
+
+    private void adicionarListenersCamposVazios() {
+        JTextField[] campos = {
+            txtNome, txtDataNascimento, txtNomeDaMae, txtCpf, 
+            txtSus, txtTelefone, txtEndereco
+        };
+
+        for (JTextField campo : campos) {
+            campo.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusGained(FocusEvent e) {
+                    // Se o campo está vazio, sempre permitir edição
+                    if (campo.getText().trim().isEmpty()) {
+                        campo.setEditable(true);
+                        campo.setBackground(Color.WHITE);
+                    }
+                }
+            });
+        }
+
+        // Listener especial para data de nascimento para calcular idade automaticamente
+        txtDataNascimento.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                calcularIdade();
+            }
+        });
+    }
+
+    // Método auxiliar para calcular a idade baseada na data de nascimento
+    private void calcularIdade() {
+        String dataNasc = txtDataNascimento.getText().trim();
+        if (!dataNasc.isEmpty()) {
+            try {
+                // Assumindo formato dd/MM/yyyy
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                Date nascimento = sdf.parse(dataNasc);
+
+                Calendar hoje = Calendar.getInstance();
+                Calendar nascCal = Calendar.getInstance();
+                nascCal.setTime(nascimento);
+
+                int idade = hoje.get(Calendar.YEAR) - nascCal.get(Calendar.YEAR);
+
+                // Verifica se ainda não fez aniversário este ano
+                if (hoje.get(Calendar.DAY_OF_YEAR) < nascCal.get(Calendar.DAY_OF_YEAR)) {
+                    idade--;
+                }
+
+                txtIdade.setText(String.valueOf(idade));
+            } catch (ParseException ex) {
+                // Em caso de erro na conversão, limpa o campo idade
+                txtIdade.setText("");
+            }
+        } else {
+            txtIdade.setText("");
+        }
+    }
+    
+    // Método para configurar eventos
+    private void setupEvents() {
+        
+        adicionarListenersCamposVazios();
+        
+        // Evento para calcular idade automaticamente quando a data de nascimento mudar
+        txtDataNascimento.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                calcularIdadeAutomaticamente();
+            }
+        });
+
+        // Evento para salvar
+        btnSalvar.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                salvarPaciente();
+            }
+        });
+
+        // Evento para Editar
+        btnEditar.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (!modoEdicao) {
+                    // Ativar modo edição
+                    modoEdicao = true;
+                    aplicarBloqueioCondicional(); // Liberar todos os campos preenchidos
+                    btnEditar.setText("Cancelar");
+                    btnEditar.setBackground(new Color(158, 158, 158)); // Cor cinza
+                } else {
+                    // Cancelar edição - voltar ao estado original
+                    modoEdicao = false;
+                    aplicarBloqueioCondicional(); // Rebloquear campos preenchidos
+                    btnEditar.setText("Editar");
+                    btnEditar.setBackground(new Color(255, 152, 0)); // Cor laranja original
+                    preencherCamposComDadosTabela(paciente);
+                }
+            }
+        });
+
+        // Evento para Excluir
+        btnExcluir.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                excluirPaciente();
+                limparCampos();
+            }
+        });
+        
+        // Evento para Imprimir
+        btnImprimir.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                imprimirDadosPaciente();
+            }
+        });
+    }
+
+    // Método para calcular idade automaticamente
+    private void calcularIdadeAutomaticamente() {
+        try {
+            String dataStr = txtDataNascimento.getText();
+            
+            // Verifica se a data está completa (formato dd/mm/aaaa)
+            if (dataStr.length() == 10) {
+                Date dataNascimento = dateFormat.parse(dataStr);
+                
+                Calendar nascimento = Calendar.getInstance();
+                nascimento.setTime(dataNascimento);
+                
+                Calendar hoje = Calendar.getInstance();
+                
+                int idade = hoje.get(Calendar.YEAR) - nascimento.get(Calendar.YEAR);
+                
+                // Verifica se ainda não fez aniversário este ano
+                if (hoje.get(Calendar.DAY_OF_YEAR) < nascimento.get(Calendar.DAY_OF_YEAR)) {
+                    idade--;
+                }
+                
+                if (idade >= 0 && idade <= 150) { // Validação básica
+                    txtIdade.setText(String.valueOf(idade));
+                } else {
+                    txtIdade.setText("");
+                }
+            } else {
+                txtIdade.setText("");
+            }
+        } catch (ParseException ex) {
+            txtIdade.setText("");
+        }
+    }
+
+    // Método para salvar pacienteSalvo
+    private void salvarPaciente() {
+        
+        // Verifica se há um paciente selecionado
+        if (paciente == null || paciente.getNome() == null || paciente.getNome().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Paciente não selecionado!",
+                    "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        try {
+            Paciente pacienteSalvo = paciente;
+            
+            
+            // Validação dos campos obrigatórios
+            if (txtNome.getText().trim().isEmpty()) {
+                JOptionPane.showMessageDialog(this, "O campo Nome é obrigatório!",
+                        "Erro de Validação", JOptionPane.ERROR_MESSAGE);
+                txtNome.requestFocus();
+                return;
+            }
+
+            if (txtCpf.getText().trim().isEmpty()) {
+                JOptionPane.showMessageDialog(this, "O campo CPF é obrigatório!",
+                        "Erro de Validação", JOptionPane.ERROR_MESSAGE);
+                txtCpf.requestFocus();
+                return;
+            }
+            
+            // Preenchimento dos campos
+            pacienteSalvo.setNome(txtNome.getText().trim());
+            pacienteSalvo.setCpf(txtCpf.getText().trim());
+            
+            // Campos opcionais
+            if (!txtDataNascimento.getText().isEmpty()) {
+                pacienteSalvo.setDataNascimento(txtDataNascimento.getText());
+            }
+            
+            if (!txtIdade.getText().isEmpty()) {
+                try {
+                    pacienteSalvo.setIdade(Integer.parseInt(txtIdade.getText()));
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Idade deve ser um número inteiro!",
+                            "Erro de Formato", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            }
+            
+            if (!txtNomeDaMae.getText().trim().isEmpty()) {
+                pacienteSalvo.setNomeDaMae(txtNomeDaMae.getText().trim());
+            }
+            
+            if (!txtSus.getText().trim().isEmpty()) {
+                pacienteSalvo.setSus(txtSus.getText().trim());
+            }
+            
+            if (!txtTelefone.getText().trim().isEmpty()) {
+                pacienteSalvo.setTelefone(txtTelefone.getText().trim());
+            }
+            
+            if (!txtEndereco.getText().trim().isEmpty()) {
+                pacienteSalvo.setEndereco(txtEndereco.getText().trim());
+            }
+            
+            System.out.println("paciente Salvo Painel Dados: "+pacienteSalvo.toString());
+            pacienteDAO.atualizar(pacienteSalvo);
+            
+            JOptionPane.showMessageDialog(this,
+                    "Paciente cadastrado com sucesso!",
+                    "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+            
+            // Cancelar edição - voltar ao estado original
+            modoEdicao = false;
+            aplicarBloqueioCondicional(); // Rebloquear campos preenchidos
+            btnEditar.setText("Editar");
+            btnEditar.setBackground(new Color(255, 152, 0)); // Cor laranja original
+            preencherCamposComDadosTabela(pacienteSalvo);
+
+        } catch (HeadlessException ex) {
+            JOptionPane.showMessageDialog(this, "Erro ao salvar paciente: " + ex.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    //Metodo para excluir paciente
+    private void excluirPaciente(){
+        
+        // Verifica se há um paciente selecionado
+        if (paciente == null || paciente.getId() == 0 || paciente.getNome().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Paciente não selecionado!",
+                    "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }else{
+            pacienteDAO.deletar(paciente.getId());
+        }
+    }
+    
+    //Metodo para imprimir
+    private void imprimirDadosPaciente() {
+        // Verifica se há um paciente selecionado
+        if (paciente == null || paciente.getNome() == null || paciente.getNome().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Não há dados de paciente para imprimir!",
+                    "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            // Cria um documento de impressão
+            StringBuilder dadosImpressao = new StringBuilder();
+            dadosImpressao.append("===============================================\n");
+            dadosImpressao.append("           FICHA DO PACIENTE\n");
+            dadosImpressao.append("===============================================\n\n");
+
+            // === DADOS PESSOAIS ===
+            dadosImpressao.append("DADOS PESSOAIS:\n");
+            dadosImpressao.append("-----------------------------------------------\n");
+
+            if (paciente.getNome() != null && !paciente.getNome().trim().isEmpty()) {
+                dadosImpressao.append("Nome: ").append(paciente.getNome()).append("\n");
+            }
+
+            if (paciente.getDataNascimento() != null && !paciente.getDataNascimento().trim().isEmpty()) {
+                dadosImpressao.append("Data de Nascimento: ").append(paciente.getDataNascimento()).append("\n");
+            }
+
+            if (paciente.getIdade() != null) {
+                dadosImpressao.append("Idade: ").append(paciente.getIdade()).append(" anos\n");
+            }
+
+            if (paciente.getNomeDaMae() != null && !paciente.getNomeDaMae().trim().isEmpty()) {
+                dadosImpressao.append("Nome da Mãe: ").append(paciente.getNomeDaMae()).append("\n");
+            }
+
+            if (paciente.getCpf() != null && !paciente.getCpf().trim().isEmpty()) {
+                dadosImpressao.append("CPF: ").append(paciente.getCpf()).append("\n");
+            }
+
+            if (paciente.getSus() != null && !paciente.getSus().trim().isEmpty()) {
+                dadosImpressao.append("Cartão SUS: ").append(paciente.getSus()).append("\n");
+            }
+
+            if (paciente.getTelefone() != null && !paciente.getTelefone().trim().isEmpty()) {
+                dadosImpressao.append("Telefone: ").append(paciente.getTelefone()).append("\n");
+            }
+
+            if (paciente.getEndereco() != null && !paciente.getEndereco().trim().isEmpty()) {
+                dadosImpressao.append("Endereço: ").append(paciente.getEndereco()).append("\n");
+            }
+
+            // === SINAIS VITAIS ===
+            boolean temSinaisVitais = false;
+            StringBuilder sinaisVitais = new StringBuilder();
+            sinaisVitais.append("\n\nSINAIS VITAIS:\n");
+            sinaisVitais.append("-----------------------------------------------\n");
+
+            if (paciente.getPaXmmhg() != null && !paciente.getPaXmmhg().trim().isEmpty()) {
+                sinaisVitais.append("Pressão Arterial: ").append(paciente.getPaXmmhg()).append("\n");
+                temSinaisVitais = true;
+            }
+
+            if (paciente.getFcBpm() > 0) {
+                sinaisVitais.append("Frequência Cardíaca: ").append(paciente.getFcBpm()).append(" bpm\n");
+                temSinaisVitais = true;
+            }
+
+            if (paciente.getFrIbpm() > 0) {
+                sinaisVitais.append("Frequência Respiratória: ").append(paciente.getFrIbpm()).append(" rpm\n");
+                temSinaisVitais = true;
+            }
+
+            if (paciente.getTemperaturaC() > 0) {
+                sinaisVitais.append("Temperatura: ").append(String.format("%.1f", paciente.getTemperaturaC())).append(" °C\n");
+                temSinaisVitais = true;
+            }
+
+            if (paciente.getHgtMgld() > 0) {
+                sinaisVitais.append("Glicemia: ").append(paciente.getHgtMgld()).append(" mg/dL\n");
+                temSinaisVitais = true;
+            }
+
+            if (paciente.getSpo2() > 0) {
+                sinaisVitais.append("Saturação O2: ").append(String.format("%.1f", paciente.getSpo2())).append(" %\n");
+                temSinaisVitais = true;
+            }
+
+            if (temSinaisVitais) {
+                dadosImpressao.append(sinaisVitais);
+            }
+
+            // === DADOS ANTROPOMÉTRICOS ===
+            boolean temDadosAntro = false;
+            StringBuilder dadosAntro = new StringBuilder();
+            dadosAntro.append("\n\nDADOS ANTROPOMÉTRICOS:\n");
+            dadosAntro.append("-----------------------------------------------\n");
+
+            if (paciente.getPeso() > 0) {
+                dadosAntro.append("Peso: ").append(String.format("%.2f", paciente.getPeso())).append(" kg\n");
+                temDadosAntro = true;
+            }
+
+            if (paciente.getAltura() > 0) {
+                dadosAntro.append("Altura: ").append(String.format("%.2f", paciente.getAltura())).append(" m\n");
+                temDadosAntro = true;
+            }
+
+            if (paciente.getImc() > 0) {
+                dadosAntro.append("IMC: ").append(String.format("%.2f", paciente.getImc())).append(" kg/m²\n");
+
+                // Classificação do IMC
+                float imc = paciente.getImc();
+                String classificacao;
+                if (imc < 18.5) {
+                    classificacao = "Abaixo do peso";
+                } else if (imc < 25) {
+                    classificacao = "Peso normal";
+                } else if (imc < 30) {
+                    classificacao = "Sobrepeso";
+                } else if (imc < 35) {
+                    classificacao = "Obesidade Grau I";
+                } else if (imc < 40) {
+                    classificacao = "Obesidade Grau II";
+                } else {
+                    classificacao = "Obesidade Grau III";
+                }
+                dadosAntro.append("Classificação IMC: ").append(classificacao).append("\n");
+                temDadosAntro = true;
+            }
+
+            if (temDadosAntro) {
+                dadosImpressao.append(dadosAntro);
+            }
+
+            // === RODAPÉ ===
+            dadosImpressao.append("\n\n");
+            dadosImpressao.append("===============================================\n");
+            dadosImpressao.append("Data/Hora da impressão: ").append(new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date())).append("\n");
+            dadosImpressao.append("Sistema de Gestão de Pacientes\n");
+            dadosImpressao.append("===============================================");
+
+            // Cria uma área de texto para impressão
+            JTextArea areaImpressao = new JTextArea(dadosImpressao.toString());
+            areaImpressao.setFont(new Font("Courier New", Font.PLAIN, 10));
+            areaImpressao.setMargin(new Insets(30, 30, 30, 30));
+
+            // Tenta imprimir
+            boolean impresso = areaImpressao.print();
+
+            if (impresso) {
+                JOptionPane.showMessageDialog(this, "Ficha do paciente enviada para impressão com sucesso!",
+                        "Impressão", JOptionPane.INFORMATION_MESSAGE);
+            }
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Erro ao imprimir: " + ex.getMessage(),
+                    "Erro de Impressão", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // Método para limpar campos
+    private void limparCampos() {
+        txtNome.setText("");
+        txtDataNascimento.setText("");
+        txtIdade.setText("");
+        txtNomeDaMae.setText("");
+        txtCpf.setText("");
+        txtSus.setText("");
+        txtTelefone.setText("");
+        txtEndereco.setText("");
+        //txtNome.requestFocus();
+    }
+
+    // Método para listar pacientes
+    private void listarPacientes() {
+        if (listaPacientes.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Nenhum paciente cadastrado.",
+                    "Lista Vazia", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        StringBuilder lista = new StringBuilder("LISTA DE PACIENTES:\n\n");
+        for (int i = 0; i < listaPacientes.size(); i++) {
+            Paciente pac = listaPacientes.get(i);
+            lista.append("Paciente ").append(i + 1).append(":\n");
+            
+            lista.append("  Nome: ").append(pac.getNome()).append("\n");
+            if (pac.getDataNascimento() != null) {
+                lista.append("  Data Nascimento: ").append(dateFormat.format(pac.getDataNascimento())).append("\n");
+            }
+            if (pac.getIdade() != null) {
+                lista.append("  Idade: ").append(pac.getIdade()).append(" anos\n");
+            }
+            if (pac.getNomeDaMae() != null) {
+                lista.append("  Nome da Mãe: ").append(pac.getNomeDaMae()).append("\n");
+            }
+            lista.append("  CPF: ").append(pac.getCpf()).append("\n");
+            if (pac.getSus() != null) {
+                lista.append("  SUS: ").append(pac.getSus()).append("\n");
+            }
+            if (pac.getTelefone() != null) {
+                lista.append("  Telefone: ").append(pac.getTelefone()).append("\n");
+            }
+            if (pac.getEndereco() != null) {
+                lista.append("  Endereço: ").append(pac.getEndereco()).append("\n");
+            }
+            
+            lista.append("\n");
+        }
+
+        JTextArea textArea = new JTextArea(lista.toString());
+        textArea.setEditable(false);
+        textArea.setFont(new java.awt.Font("Monospaced", 0, 12));
+
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setPreferredSize(new java.awt.Dimension(600, 400));
+
+        JOptionPane.showMessageDialog(this, scrollPane, "Lista de Pacientes",
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+
+    @Override
+    public void onPatientSelected(Paciente patientData) {
+        paciente = patientData;
+        preencherCamposComDadosTabela(patientData);
+    }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JMenuBar jMenuBar1;
+    private javax.swing.JMenu jMenu1;
+    private javax.swing.JMenu jMenu2;
+    private javax.swing.JMenu jMenu3;
+
+    private javax.swing.JLabel lblTitulo;
+    private javax.swing.JLabel lblNome;
+    private javax.swing.JLabel lblDataNascimento;
+    private javax.swing.JLabel lblIdade;
+    private javax.swing.JLabel lblNomeDaMae;
+    private javax.swing.JLabel lblCpf;
+    private javax.swing.JLabel lblSus;
+    private javax.swing.JLabel lblTelefone;
+    private javax.swing.JLabel lblEndereco;
+
+    private javax.swing.JTextField txtNome;
+    private javax.swing.JTextField txtDataNascimento;
+    private javax.swing.JTextField txtIdade;
+    private javax.swing.JTextField txtNomeDaMae;
+    private javax.swing.JTextField txtCpf;
+    private javax.swing.JTextField txtSus;
+    private javax.swing.JTextField txtTelefone;
+    private javax.swing.JTextField txtEndereco;
+
+    private javax.swing.JButton btnSalvar;
+    private javax.swing.JButton btnEditar;
+    private javax.swing.JButton btnExcluir;
+    private javax.swing.JButton btnImprimir;
+    // End of variables declaration//GEN-END:variables
+}
+                                
