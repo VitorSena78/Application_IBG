@@ -1,6 +1,7 @@
 package com.mycompany.view;
 
 import com.mycompany.model.bean.Paciente;
+import com.mycompany.model.bean.PacienteEspecialidade;
 import com.mycompany.model.dao.PacienteDAO;
 import javax.swing.*;
 import java.awt.*;
@@ -798,7 +799,11 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
         paciente = patientData;
         preencherCamposComDadosTabela(patientData);
     }
-
+    
+    @Override
+    public void onPatientSelected(Paciente patientData, List<PacienteEspecialidade> pacienteEspecialidadeData) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuBar jMenuBar1;

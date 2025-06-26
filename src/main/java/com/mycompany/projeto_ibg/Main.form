@@ -34,9 +34,9 @@
     </DimensionLayout>
     <DimensionLayout dim="1">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Component id="menu31" pref="620" max="32767" attributes="0"/>
-          <Component id="content" alignment="0" pref="620" max="32767" attributes="0"/>
-          <Component id="content2" alignment="0" pref="620" max="32767" attributes="0"/>
+          <Component id="menu31" alignment="0" pref="640" max="32767" attributes="0"/>
+          <Component id="content" alignment="0" pref="640" max="32767" attributes="0"/>
+          <Component id="content2" alignment="0" pref="640" max="32767" attributes="0"/>
       </Group>
     </DimensionLayout>
   </Layout>

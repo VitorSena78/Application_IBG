@@ -2,6 +2,7 @@
 package com.mycompany.view;
 
 import com.mycompany.model.bean.Paciente;
+import com.mycompany.model.bean.PacienteEspecialidade;
 import com.mycompany.model.dao.PacienteDAO;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -20,6 +21,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 public class PainelDados2 extends javax.swing.JPanel {
     
@@ -46,11 +48,18 @@ public class PainelDados2 extends javax.swing.JPanel {
     DefaultTableModel tableModel;
     private List<Paciente> pacientes;
     
-    public PainelDados2(List<Paciente> pacientes) {
+    //Variaves da seleção paciente especialidade
+    private List<PacienteEspecialidade> pacienteEspecialidades;
+    
+    public PainelDados2(List<Paciente> pacientes, List<PacienteEspecialidade> pacienteEspecialidades) {
         initComponents();
         tableModel = (DefaultTableModel) jTable1.getModel();
         setupTableDesign();
         this.pacientes = pacientes;
+        
+        //Seleção paciente especialidade
+        this.pacienteEspecialidades = pacienteEspecialidades;
+                
         loadPacientes();
         setOpaque(false);
     }
@@ -412,9 +421,10 @@ public class PainelDados2 extends javax.swing.JPanel {
                     
                     //Busca paienete da linha(Row) na lista
                     patientData = buscaPaciente(patientData);
+                    List<PacienteEspecialidade> pacienteEspecialidadeData = buscaPacienteEspecialidade(patientData);
                     
                     // Notificar o listener
-                    patientSelectionListener.onPatientSelected(patientData);
+                    patientSelectionListener.onPatientSelected(patientData, pacienteEspecialidadeData);
                 }
             }
             
@@ -434,7 +444,7 @@ public class PainelDados2 extends javax.swing.JPanel {
             
     }
     
-    //Busca binaria paienete
+    //Busca binaria pacienete
     private Paciente buscaPaciente(Paciente patientData) {
         
         int inicio = 0;
@@ -455,6 +465,18 @@ public class PainelDados2 extends javax.swing.JPanel {
         
         System.out.println("Paciente não encontrado");
         return patientData;
+    }
+    
+    private List<PacienteEspecialidade> buscaPacienteEspecialidade(Paciente paciente){
+        // Verifica se o paciente e a lista de especialidades são válidos
+        if (paciente == null || pacienteEspecialidades == null || pacienteEspecialidades.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Filtra as especialidades relacionadas ao paciente usando stream
+        return pacienteEspecialidades.stream()
+                .filter(pe -> pe.getPacienteId() == paciente.getId())
+                .collect(Collectors.toList());
     }
     
     private void setupCustomScrollPane() {

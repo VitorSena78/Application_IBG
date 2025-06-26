@@ -2,8 +2,12 @@ package com.mycompany.projeto_ibg;
 
 import com.mycompany.kafka.PacienteChangeListener;
 import com.mycompany.kafka.PacienteNotificationManager;
+import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
+import com.mycompany.model.bean.PacienteEspecialidade;
+import com.mycompany.model.dao.EspecialidadeDAO;
 import com.mycompany.model.dao.PacienteDAO;
+import com.mycompany.model.dao.PacienteEspecialidadeDAO;
 import com.mycompany.view.FormularioSaude2P;
 import com.mycompany.view.FormularioDados2P;
 import com.mycompany.view.MenuListener;
@@ -25,6 +29,10 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(Main.class.getName());
     PacienteDAO pacienteDAO;
     List<Paciente> pacientes;
+    EspecialidadeDAO especialidadeDAO;
+    List<Especialidade> especialidades;
+    PacienteEspecialidadeDAO pacienteEspecialidadeDAO;
+    List<PacienteEspecialidade> pacienteEspecialidade;
     
     // Referências para os painéis ativos
     private PainelSaude2 painelSaudeAtivo;
@@ -41,9 +49,18 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         
         //carega o pacienteDAO
         pacienteDAO = new PacienteDAO();
-        
         //carega a Lista de pacientes
         pacientes = pacienteDAO.listarTodos();
+        
+        //carega o especialidadeDAO
+        especialidadeDAO = new EspecialidadeDAO();
+        //carega a Lista de especialidades
+        especialidades = especialidadeDAO.listarTodas();
+        
+        //carega o pacienteEspecialidadeDAO
+        pacienteEspecialidadeDAO = new PacienteEspecialidadeDAO();
+        //carega a Lista de pacienteEspecialidade
+        pacienteEspecialidade = pacienteEspecialidadeDAO.listarTodos();
         
         // Registrar como listener de mudanças de pacientes
         PacienteNotificationManager.getInstance().addListener(this);
@@ -74,8 +91,8 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
 
     @Override
     public void onDadosSelected() {
-        painelDadosAtivo = new PainelDados2(pacientes);
-        formularioDadosAtivo = new FormularioDados2P(pacienteDAO);
+        painelDadosAtivo = new PainelDados2(pacientes, pacienteEspecialidade);
+        formularioDadosAtivo = new FormularioDados2P(pacienteDAO, pacienteEspecialidadeDAO, especialidades);
         
         refreshContentPainel(painelDadosAtivo);
         refreshContentFormulario(formularioDadosAtivo);
@@ -188,7 +205,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     
     private void refreshContentPainel(Component painel){
         
-        painel.setSize(800, 620);
+        painel.setSize(800, 640);
         painel.setLocation(0, 0);
         
         content.removeAll();
@@ -199,7 +216,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     
     private void refreshContentFormulario(Component painel){
         
-        painel.setSize(500, 620);
+        painel.setSize(500, 640);
         painel.setLocation(0, 0);
         
         content2.removeAll();
@@ -259,9 +276,9 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(menu31, javax.swing.GroupLayout.DEFAULT_SIZE, 620, Short.MAX_VALUE)
-            .addComponent(content, javax.swing.GroupLayout.DEFAULT_SIZE, 620, Short.MAX_VALUE)
-            .addComponent(content2, javax.swing.GroupLayout.DEFAULT_SIZE, 620, Short.MAX_VALUE)
+            .addComponent(menu31, javax.swing.GroupLayout.DEFAULT_SIZE, 640, Short.MAX_VALUE)
+            .addComponent(content, javax.swing.GroupLayout.DEFAULT_SIZE, 640, Short.MAX_VALUE)
+            .addComponent(content2, javax.swing.GroupLayout.DEFAULT_SIZE, 640, Short.MAX_VALUE)
         );
 
         pack();

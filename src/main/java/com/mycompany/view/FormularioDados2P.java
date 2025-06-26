@@ -1,7 +1,11 @@
 package com.mycompany.view;
 
+import com.mycompany.components.JCheckBoxCustom;
+import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
+import com.mycompany.model.bean.PacienteEspecialidade;
 import com.mycompany.model.dao.PacienteDAO;
+import com.mycompany.model.dao.PacienteEspecialidadeDAO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -31,13 +35,23 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
     private PacienteDAO pacienteDAO;
     
+    //variaves especialidades selecionadas
+    private List<Especialidade> especialidades;
+    List<PacienteEspecialidade> pacienteEspecialidades;
+    private PacienteEspecialidadeDAO pacienteEspecialidadeDAO;
+  
     // Controla se está em modo de edição
     private boolean modoEdicao = false; 
 
-    public FormularioDados2P(PacienteDAO pacienteDAO) {
+    public FormularioDados2P(PacienteDAO pacienteDAO, PacienteEspecialidadeDAO pacienteEspecialidadeDAO, List<Especialidade> especialidades) {
         listaPacientes = new ArrayList<>();
         initComponents();
         this.pacienteDAO = pacienteDAO;
+        
+        //especialidades selecionadas
+        this.especialidades = especialidades;
+        this.pacienteEspecialidadeDAO = pacienteEspecialidadeDAO;
+        
         setupEvents();
         setOpaque(false); // Importante para o efeito de borda funcionar
     }
@@ -103,6 +117,62 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         jMenuBar1.add(jMenu2);
 
         jMenu3.setText("jMenu3");
+        
+        // Label das especialidades
+        lblEspecialidades = new javax.swing.JLabel();
+        lblEspecialidades.setFont(new java.awt.Font("Arial", 1, 12));
+        lblEspecialidades.setText("Especialidades Médicas:");
+
+        // Criação dos checkboxes das especialidades
+        chkCardiologia = new JCheckBoxCustom();
+        chkCardiologia.setFont(new java.awt.Font("Arial", 0, 12)); 
+        chkCardiologia.setText("Cardiologia");
+        chkCardiologia.setOpaque(false);
+
+        chkPediatria = new JCheckBoxCustom();
+        chkPediatria.setFont(new java.awt.Font("Arial", 0, 12));
+        chkPediatria.setText("Pediatria");
+        chkPediatria.setOpaque(false);
+
+        chkClinicoGeral = new JCheckBoxCustom();
+        chkClinicoGeral.setFont(new java.awt.Font("Arial", 0, 12));
+        chkClinicoGeral.setText("Clínico Geral");
+        chkClinicoGeral.setOpaque(false);
+
+        chkNeurologia = new JCheckBoxCustom();
+        chkNeurologia.setFont(new java.awt.Font("Arial", 0, 12));
+        chkNeurologia.setText("Neurologia");
+        chkNeurologia.setOpaque(false);
+
+        chkGinecologia = new JCheckBoxCustom();
+        chkGinecologia.setFont(new java.awt.Font("Arial", 0, 12));
+        chkGinecologia.setText("Ginecologia");
+        chkGinecologia.setOpaque(false);
+
+        chkDermatologia = new JCheckBoxCustom();
+        chkDermatologia.setFont(new java.awt.Font("Arial", 0, 12));
+        chkDermatologia.setText("Dermatologia");
+        chkDermatologia.setOpaque(false);
+
+        chkOrtopedia = new JCheckBoxCustom();
+        chkOrtopedia.setFont(new java.awt.Font("Arial", 0, 12));
+        chkOrtopedia.setText("Ortopedia");
+        chkOrtopedia.setOpaque(false);
+
+        chkEndocrinologia = new JCheckBoxCustom();
+        chkEndocrinologia.setFont(new java.awt.Font("Arial", 0, 12));
+        chkEndocrinologia.setText("Endocrinologia");
+        chkEndocrinologia.setOpaque(false);
+
+        chkOftalmologia = new JCheckBoxCustom();
+        chkOftalmologia.setFont(new java.awt.Font("Arial", 0, 12));
+        chkOftalmologia.setText("Oftalmologia");
+        chkOftalmologia.setOpaque(false);
+
+        chkPsiquiatria = new JCheckBoxCustom();
+        chkPsiquiatria.setFont(new java.awt.Font("Arial", 0, 12));
+        chkPsiquiatria.setText("Psiquiatria");
+        chkPsiquiatria.setOpaque(false);
 
         // Configurar título
         lblTitulo.setFont(new java.awt.Font("Arial", 1, 20));
@@ -207,112 +277,288 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
-                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(layout.createSequentialGroup()
+                    .addGap(30, 30, 30)
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(lblTitulo)
+                        // Campos grandes (largura total - 440px)
+                        .addComponent(lblNome)
+                        .addComponent(txtNome, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(lblNomeDaMae)
+                        .addComponent(txtNomeDaMae, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(lblEndereco)
+                        .addComponent(txtEndereco, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
+
+                        // Linha com campos médios lado a lado
                         .addGroup(layout.createSequentialGroup()
-                                .addGap(30, 30, 30)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addComponent(lblTitulo)
-                                        // Campos grandes (largura total - 440px)
-                                        .addComponent(lblNome)
-                                        .addComponent(txtNome, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(lblNomeDaMae)
-                                        .addComponent(txtNomeDaMae, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(lblEndereco)
-                                        .addComponent(txtEndereco, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        
-                                        // Linha com campos médios lado a lado
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(lblDataNascimento)
-                                                        .addComponent(txtDataNascimento, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                                .addGap(20, 20, 20)
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(lblIdade)
-                                                        .addComponent(txtIdade, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                                .addGap(20, 20, 20)
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(lblTelefone)
-                                                        .addComponent(txtTelefone, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                        
-                                        // Linha com campos pequenos/médios lado a lado
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(lblCpf)
-                                                        .addComponent(txtCpf, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                                .addGap(20, 20, 20)
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(lblSus)
-                                                        .addComponent(txtSus, javax.swing.GroupLayout.PREFERRED_SIZE, 260, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                        
-                                        // Botões
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addGap(18, 18, 18)
-                                                .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addGap(18, 18, 18)
-                                                .addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addGap(64, 64, 64)
-                                                .addComponent(btnImprimir, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                .addContainerGap(30, Short.MAX_VALUE))
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(lblDataNascimento)
+                                .addComponent(txtDataNascimento, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGap(20, 20, 20)
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(lblIdade)
+                                .addComponent(txtIdade, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGap(20, 20, 20)
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(lblTelefone)
+                                .addComponent(txtTelefone, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE)))
+
+                        // Linha com campos pequenos/médios lado a lado
+                        .addGroup(layout.createSequentialGroup()
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(lblCpf)
+                                .addComponent(txtCpf, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGap(20, 20, 20)
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(lblSus)
+                                .addComponent(txtSus, javax.swing.GroupLayout.PREFERRED_SIZE, 260, javax.swing.GroupLayout.PREFERRED_SIZE)))
+
+                        // Especialidades em 4 colunas
+                        .addComponent(lblEspecialidades)
+                        .addGroup(layout.createSequentialGroup()
+                            // Coluna 1
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(chkCardiologia, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(chkPediatria, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(chkClinicoGeral, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGap(15, 15, 15)
+                            // Coluna 2
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(chkNeurologia, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(chkGinecologia, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(chkDermatologia, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGap(15, 15, 15)
+                            // Coluna 3
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(chkOrtopedia, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(chkEndocrinologia, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(chkOftalmologia, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGap(15, 15, 15)
+                            // Coluna 4
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(chkPsiquiatria, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
+
+
+                        // Botões
+                        .addGroup(layout.createSequentialGroup()
+                            .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGap(18, 18, 18)
+                            .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGap(18, 18, 18)
+                            .addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGap(64, 64, 64)
+                            .addComponent(btnImprimir, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addContainerGap(30, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
-                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(layout.createSequentialGroup()
+                    .addGap(25, 25, 25)
+                    .addComponent(lblTitulo)
+                    .addGap(25, 25, 25)
+
+                    // Campos grandes
+                    .addComponent(lblNome)
+                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                    .addComponent(txtNome, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGap(15, 15, 15)
+
+                    .addComponent(lblNomeDaMae)
+                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                    .addComponent(txtNomeDaMae, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGap(15, 15, 15)
+
+                    .addComponent(lblEndereco)
+                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                    .addComponent(txtEndereco, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGap(15, 15, 15)
+
+                    // Linha com Data, Idade e Telefone
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(lblDataNascimento)
+                        .addComponent(lblIdade)
+                        .addComponent(lblTelefone))
+                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(txtDataNascimento, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(txtIdade, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(txtTelefone, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGap(15, 15, 15)
+
+                    // Linha com CPF e SUS
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(lblCpf)
+                        .addComponent(lblSus))
+                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(txtCpf, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(txtSus, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGap(20, 20, 20)
+
+                    // Especialidades médicas - organizadas em 4 colunas
+                    .addComponent(lblEspecialidades)
+                    .addGap(10, 10, 10)
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        // Coluna 1
                         .addGroup(layout.createSequentialGroup()
-                                .addGap(25, 25, 25)
-                                .addComponent(lblTitulo)
-                                .addGap(25, 25, 25)
-                                
-                                // Campos grandes
-                                .addComponent(lblNome)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(txtNome, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(15, 15, 15)
-                                
-                                .addComponent(lblNomeDaMae)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(txtNomeDaMae, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(15, 15, 15)
-                                
-                                .addComponent(lblEndereco)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(txtEndereco, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(15, 15, 15)
-                                
-                                // Linha com Data, Idade e Telefone
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(lblDataNascimento)
-                                        .addComponent(lblIdade)
-                                        .addComponent(lblTelefone))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(txtDataNascimento, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(txtIdade, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(txtTelefone, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(15, 15, 15)
-                                
-                                // Linha com CPF e SUS
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(lblCpf)
-                                        .addComponent(lblSus))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(txtCpf, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(txtSus, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(30, 30, 30)
-                                
-                                // Botões
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(btnImprimir, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addContainerGap(30, Short.MAX_VALUE))
+                            .addComponent(chkCardiologia, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGap(3, 3, 3)
+                            .addComponent(chkPediatria, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGap(3, 3, 3)
+                            .addComponent(chkClinicoGeral, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        // Coluna 2
+                        .addGroup(layout.createSequentialGroup()
+                            .addComponent(chkNeurologia, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGap(3, 3, 3)
+                            .addComponent(chkGinecologia, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGap(3, 3, 3)
+                            .addComponent(chkDermatologia, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        // Coluna 3
+                        .addGroup(layout.createSequentialGroup()
+                            .addComponent(chkOrtopedia, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGap(3, 3, 3)
+                            .addComponent(chkEndocrinologia, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGap(3, 3, 3)
+                            .addComponent(chkOftalmologia, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        // Coluna 4
+                        .addGroup(layout.createSequentialGroup()
+                            .addComponent(chkPsiquiatria, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGap(25, 25, 25)
+
+                    // Botões
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(btnImprimir, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addContainerGap(30, Short.MAX_VALUE))
         );
         
         // Define tamanho preferido do painel - AJUSTADO para as mesmas dimensões do Formulario2
-        this.setPreferredSize(new Dimension(500, 620)); // Reduzido devido à otimização do layout
+        this.setPreferredSize(new Dimension(500, 750)); // Reduzido devido à otimização do layout
     }// </editor-fold>//GEN-END:initComponents
 
+    // Versão alternativa se você já tiver uma lista de especialidades carregada na classe
+    private void setEspecialidadesSelecionadas(List<PacienteEspecialidade> pacienteEspecialidades) {
+        // Limpar todas as seleções primeiro
+        limparEspecialidades();
+
+        // Verificar se a lista é válida
+        if (pacienteEspecialidades == null || pacienteEspecialidades.isEmpty()) {
+            return;
+        }
+
+        // Usa lista de especialidades disponível na classe
+        for (PacienteEspecialidade pe : pacienteEspecialidades) {
+            // Buscar o nome da especialidade pelo ID
+            String nomeEspecialidade = buscarNomeEspecialidadePorId(pe.getEspecialidadeId());
+
+            if (nomeEspecialidade != null) {
+                switch (nomeEspecialidade) {
+                    case "Cardiologia":
+                        chkCardiologia.setSelected(true);
+                        break;
+                    case "Pediatria":
+                        chkPediatria.setSelected(true);
+                        break;
+                    case "Clínico Geral":
+                        chkClinicoGeral.setSelected(true);
+                        break;
+                    case "Neurologia":
+                        chkNeurologia.setSelected(true);
+                        break;
+                    case "Ginecologia":
+                        chkGinecologia.setSelected(true);
+                        break;
+                    case "Dermatologia":
+                        chkDermatologia.setSelected(true);
+                        break;
+                    case "Ortopedia":
+                        chkOrtopedia.setSelected(true);
+                        break;
+                    case "Endocrinologia":
+                        chkEndocrinologia.setSelected(true);
+                        break;
+                    case "Oftalmologia":
+                        chkOftalmologia.setSelected(true);
+                        break;
+                    case "Psiquiatria":
+                        chkPsiquiatria.setSelected(true);
+                        break;
+                }
+            }
+        }
+    }
+    
+    // Método auxiliar para buscar o nome da especialidade pelo ID
+    private String buscarNomeEspecialidadePorId(int especialidadeId) {
+
+        // Usa a lista de especialidades na classe:
+        if (this.especialidades != null) {
+            for (Especialidade esp : this.especialidades) {
+                if (esp.getIdEspecialidade() == especialidadeId) {
+                    return esp.getNome();
+                }
+            }
+        }
+        return null;
+    }
+    
+    // Método para obter especialidades selecionadas
+    private List<Especialidade> getEspecialidadesSelecionadas() {
+        List<Especialidade> especialidadesSelecionadas = new ArrayList<>();
+        
+
+        if (chkCardiologia.isSelected()) especialidadesSelecionadas.add(especialidades.stream().filter(esp -> "Cardiologia".equalsIgnoreCase(esp.getNome())).findFirst().orElse(null));
+        if (chkPediatria.isSelected()) especialidadesSelecionadas.add(especialidades.stream().filter(esp ->"Pediatria".equalsIgnoreCase(esp.getNome())).findFirst().orElse(null));
+        if (chkClinicoGeral.isSelected()) especialidadesSelecionadas.add(especialidades.stream().filter(esp ->"Clínico Geral".equalsIgnoreCase(esp.getNome())).findFirst().orElse(null));
+        if (chkNeurologia.isSelected()) especialidadesSelecionadas.add(especialidades.stream().filter(esp ->"Neurologia".equalsIgnoreCase(esp.getNome())).findFirst().orElse(null));
+        if (chkGinecologia.isSelected()) especialidadesSelecionadas.add(especialidades.stream().filter(esp ->"Ginecologia".equalsIgnoreCase(esp.getNome())).findFirst().orElse(null));
+        if (chkDermatologia.isSelected()) especialidadesSelecionadas.add(especialidades.stream().filter(esp ->"Dermatologia".equalsIgnoreCase(esp.getNome())).findFirst().orElse(null));
+        if (chkOrtopedia.isSelected()) especialidadesSelecionadas.add(especialidades.stream().filter(esp ->"Ortopedia".equalsIgnoreCase(esp.getNome())).findFirst().orElse(null));
+        if (chkEndocrinologia.isSelected()) especialidadesSelecionadas.add(especialidades.stream().filter(esp ->"Endocrinologia".equalsIgnoreCase(esp.getNome())).findFirst().orElse(null));
+        if (chkOftalmologia.isSelected()) especialidadesSelecionadas.add(especialidades.stream().filter(esp ->"Oftalmologia".equalsIgnoreCase(esp.getNome())).findFirst().orElse(null));
+        if (chkPsiquiatria.isSelected()) especialidadesSelecionadas.add(especialidades.stream().filter(esp ->"Psiquiatria".equalsIgnoreCase(esp.getNome())).findFirst().orElse(null));
+
+        return especialidadesSelecionadas;
+    }
+    
+    // Método para limpar especialidades
+    private void limparEspecialidades() {
+        chkCardiologia.setSelected(false);
+        chkPediatria.setSelected(false);
+        chkClinicoGeral.setSelected(false);
+        chkNeurologia.setSelected(false);
+        chkGinecologia.setSelected(false);
+        chkDermatologia.setSelected(false);
+        chkOrtopedia.setSelected(false);
+        chkEndocrinologia.setSelected(false);
+        chkOftalmologia.setSelected(false);
+        chkPsiquiatria.setSelected(false);
+    }
+    
+    // Método para aplicar bloqueio condicional nas especialidades
+    private void aplicarBloqueioCondicionalEspecialidades() {
+        JCheckBox[] checkboxes = {
+            chkCardiologia, chkPediatria, chkClinicoGeral, chkNeurologia, chkGinecologia,
+            chkDermatologia, chkOrtopedia, chkEndocrinologia, chkOftalmologia, chkPsiquiatria
+        };
+
+        for (JCheckBox checkbox : checkboxes) {
+            checkbox.setEnabled(modoEdicao || !temEspecialidadesSelecionadas());
+        }
+    }
+    
+    // Método para verificar se há especialidades selecionadas
+    private boolean temEspecialidadesSelecionadas() {
+        return chkCardiologia.isSelected() || chkPediatria.isSelected() || 
+               chkClinicoGeral.isSelected() || chkNeurologia.isSelected() || 
+               chkGinecologia.isSelected() || chkDermatologia.isSelected() || 
+               chkOrtopedia.isSelected() || chkEndocrinologia.isSelected() || 
+               chkOftalmologia.isSelected() || chkPsiquiatria.isSelected();
+    }
+    
     //Método para preencher os campos do formulário com dados da tabela
     public void preencherCamposComDadosTabela(Paciente patientData) {
         if (patientData != null) {
@@ -325,7 +571,15 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
             txtSus.setText(patientData.getSus() != null ? patientData.getSus().toString() : "");
             txtTelefone.setText(patientData.getTelefone() != null ? patientData.getTelefone().toString() : "");
             txtEndereco.setText(patientData.getEndereco() != null ? patientData.getEndereco().toString() : "");
+            
+            // Verifica se pacienteEspecialidades recebeu as especialidades para esse paciente selecionado
+            if (pacienteEspecialidades != null) {
+                setEspecialidadesSelecionadas(pacienteEspecialidades);
+            }
 
+            // E modificar o método aplicarBloqueioCondicional() para incluir:
+            aplicarBloqueioCondicionalEspecialidades();
+            
             aplicarBloqueioCondicional();
             modoEdicao = false; // Garantir que não está em modo edição
         }
@@ -567,6 +821,13 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
             if (!txtEndereco.getText().trim().isEmpty()) {
                 pacienteSalvo.setEndereco(txtEndereco.getText().trim());
             }
+            // Salvar especialidades selecionadas
+            List<Especialidade> especialidadesSelecionadas = getEspecialidadesSelecionadas();
+            if (!especialidadesSelecionadas.isEmpty()) {
+                
+                
+                
+            }
             
             System.out.println("paciente Salvo Painel Dados: "+pacienteSalvo.toString());
             pacienteDAO.atualizar(pacienteSalvo);
@@ -735,6 +996,22 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
             if (temDadosAntro) {
                 dadosImpressao.append(dadosAntro);
             }
+            
+            // === ESPECIALIDADES MÉDICAS ===
+            if (pacienteEspecialidades != null && !pacienteEspecialidades.isEmpty()) {
+                dadosImpressao.append("\n\nESPECIALIDADES MÉDICAS:\n");
+                dadosImpressao.append("-----------------------------------------------\n");
+
+                for (PacienteEspecialidade pe : pacienteEspecialidades) {
+                    String nomeEspecialidade = buscarNomeEspecialidadePorId(pe.getEspecialidadeId());
+
+                    if (nomeEspecialidade != null) {
+                        dadosImpressao.append("• ").append(nomeEspecialidade);
+
+                        dadosImpressao.append("\n");
+                    }
+                }
+            }
 
             // === RODAPÉ ===
             dadosImpressao.append("\n\n");
@@ -772,7 +1049,7 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         txtSus.setText("");
         txtTelefone.setText("");
         txtEndereco.setText("");
-        //txtNome.requestFocus();
+        limparEspecialidades();
     }
 
     // Método para listar pacientes
@@ -825,9 +1102,15 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     
 
     @Override
-    public void onPatientSelected(Paciente patientData) {
+    public void onPatientSelected(Paciente patientData, List<PacienteEspecialidade> pacienteEspecialidadeData) {
         paciente = patientData;
+        pacienteEspecialidades = pacienteEspecialidadeData;
         preencherCamposComDadosTabela(patientData);
+    }
+    
+    @Override
+    public void onPatientSelected(Paciente patientData) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -859,6 +1142,18 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     private javax.swing.JButton btnEditar;
     private javax.swing.JButton btnExcluir;
     private javax.swing.JButton btnImprimir;
+    
+    // Especialidades médicas
+    private javax.swing.JLabel lblEspecialidades;
+    private javax.swing.JCheckBox chkCardiologia;
+    private javax.swing.JCheckBox chkPediatria;
+    private javax.swing.JCheckBox chkClinicoGeral;
+    private javax.swing.JCheckBox chkNeurologia;
+    private javax.swing.JCheckBox chkGinecologia;
+    private javax.swing.JCheckBox chkDermatologia;
+    private javax.swing.JCheckBox chkOrtopedia;
+    private javax.swing.JCheckBox chkEndocrinologia;
+    private javax.swing.JCheckBox chkOftalmologia;
+    private javax.swing.JCheckBox chkPsiquiatria;
     // End of variables declaration//GEN-END:variables
-}
-                                
+}          
