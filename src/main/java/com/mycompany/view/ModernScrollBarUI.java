@@ -1,4 +1,3 @@
-
 package com.mycompany.view;
 
 import java.awt.Color;

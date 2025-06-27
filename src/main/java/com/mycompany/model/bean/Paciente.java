@@ -1,7 +1,5 @@
 package com.mycompany.model.bean;
 
-import java.util.Date;
-
 /**
  *
  * @author vitor

@@ -15,7 +15,6 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.awt.Insets;
-import java.awt.print.PrinterException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 

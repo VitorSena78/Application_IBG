@@ -7,7 +7,6 @@ import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.TableCellRenderer;
 
 // Renderer personalizado para o cabeçalho que força as cores
 public class TabelaHeaderRenderer2 extends DefaultTableCellRenderer {

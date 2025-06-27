@@ -6,7 +6,6 @@ import java.awt.Font;
 import javax.swing.BorderFactory;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.TableCellRenderer;
 
 // Renderer personalizado para destacar valores críticos
 public class TabelaHealthDataCellRenderer2 extends DefaultTableCellRenderer {

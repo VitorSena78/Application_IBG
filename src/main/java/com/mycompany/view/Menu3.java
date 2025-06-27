@@ -1,6 +1,5 @@
 package com.mycompany.view;
 
-import com.mycompany.projeto_ibg.Main;
 import java.awt.Color;
 import java.awt.GradientPaint;
 import java.awt.Graphics;

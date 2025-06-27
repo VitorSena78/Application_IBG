@@ -16,16 +16,11 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.Period;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.awt.Insets;
-import java.awt.print.PrinterException;
 
 public class FormularioDados2P extends javax.swing.JPanel implements PatientSelectionListener {
 

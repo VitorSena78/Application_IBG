@@ -1,18 +1,14 @@
 package com.mycompany.view;
 
 import com.mycompany.model.bean.Paciente;
-import com.mycompany.model.dao.PacienteDAO;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.*;
-import javax.swing.plaf.basic.BasicScrollBarUI;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumn;
 import java.util.List;
-import java.util.ArrayList;
 
 public class PainelSaude2 extends javax.swing.JPanel {
     
