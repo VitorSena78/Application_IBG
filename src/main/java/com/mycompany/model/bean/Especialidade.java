@@ -5,7 +5,7 @@ package com.mycompany.model.bean;
  * @author vitor
  */
 public class Especialidade {
-    private int idEspecialidade;
+    private int id;
     private String nome;
 
     public Especialidade() {
@@ -18,12 +18,12 @@ public class Especialidade {
   
     // Getters e Setters
 
-    public int getIdEspecialidade() {
-        return idEspecialidade;
+    public int getId() {
+        return id;
     }
 
-    public void setIdEspecialidade(int idEspecialidade) {
-        this.idEspecialidade = idEspecialidade;
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getNome() {
@@ -36,7 +36,7 @@ public class Especialidade {
 
     @Override
     public String toString() {
-        return "Especialidade{" + "idEspecialidade=" + idEspecialidade + ", nome=" + nome + '}';
+        return "Especialidade{" + "id=" + id + ", nome=" + nome + '}';
     }
     
     

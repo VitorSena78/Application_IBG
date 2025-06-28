@@ -3,6 +3,7 @@ package com.mycompany.kafka;
 import com.mycompany.model.bean.Paciente;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.mycompany.model.bean.PacienteEspecialidade;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -20,7 +21,9 @@ public class PacienteNotificationManager {
     private ObjectMapper objectMapper = new ObjectMapper();
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     
-    private PacienteNotificationManager() {}
+    private PacienteNotificationManager() {
+    
+    }
     
     public static synchronized PacienteNotificationManager getInstance() {
         if (instance == null) {

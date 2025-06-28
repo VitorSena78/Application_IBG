@@ -434,13 +434,14 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         this.setPreferredSize(new Dimension(500, 750)); // Reduzido devido à otimização do layout
     }// </editor-fold>//GEN-END:initComponents
 
-    // Versão alternativa se você já tiver uma lista de especialidades carregada na classe
+    // Usa lista de especialidades carregada na classe
     private void setEspecialidadesSelecionadas(List<PacienteEspecialidade> pacienteEspecialidades) {
         // Limpar todas as seleções primeiro
         limparEspecialidades();
 
         // Verificar se a lista é válida
         if (pacienteEspecialidades == null || pacienteEspecialidades.isEmpty()) {
+            System.out.println("pacienteEspecialidades é null ou está vazio");
             return;
         }
 
@@ -492,7 +493,7 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         // Usa a lista de especialidades na classe:
         if (this.especialidades != null) {
             for (Especialidade esp : this.especialidades) {
-                if (esp.getIdEspecialidade() == especialidadeId) {
+                if (esp.getId() == especialidadeId) {
                     return esp.getNome();
                 }
             }
@@ -517,6 +518,41 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         if (chkPsiquiatria.isSelected()) especialidadesSelecionadas.add(especialidades.stream().filter(esp ->"Psiquiatria".equalsIgnoreCase(esp.getNome())).findFirst().orElse(null));
 
         return especialidadesSelecionadas;
+    }
+    
+    //Cria uma lista de PacienteEspecialidade a partir de uma lista de especialidades e o ID do paciente
+    private List<PacienteEspecialidade> listaPacienteEspecialidade(int pacienteId, List<Especialidade> especialidadesSelecionadas, String dataAtendimento) {
+
+        List<PacienteEspecialidade> listaPacienteEspecialidade = new ArrayList<>();
+        // Verifica se a lista de especialidades não é nula ou vazia
+        if (especialidadesSelecionadas == null || especialidadesSelecionadas.isEmpty()) {
+            System.out.println("Nenhuma especialidade selecionada para o paciente ID: " + pacienteId);
+            return listaPacienteEspecialidade; // Retorna lista vazia
+        }
+
+        // Se a data não foi fornecida, usa a data atual formatada como String
+        if (dataAtendimento == null || dataAtendimento.trim().isEmpty()) {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            dataAtendimento = sdf.format(new java.util.Date()); // Data atual formatada
+        }
+
+        // Cria um objeto PacienteEspecialidade para cada especialidade selecionada
+        for (Especialidade especialidade : especialidadesSelecionadas) {
+            if (especialidade != null && especialidade.getId() > 0) {
+                PacienteEspecialidade pe = new PacienteEspecialidade();
+                pe.setPacienteId(pacienteId);
+                pe.setEspecialidadeId(especialidade.getId());
+                pe.setDataAtendimento(dataAtendimento);
+                listaPacienteEspecialidade.add(pe);
+                System.out.println("Criada associação: Paciente " + pacienteId + 
+                                 " - Especialidade " + especialidade.getId() + 
+                                 " (" + especialidade.getNome() + ")");
+            } else {
+                System.err.println("Especialidade inválida encontrada na lista - ignorando");
+            }
+        }
+        System.out.println("Total de associações criadas: " + listaPacienteEspecialidade.size());
+        return listaPacienteEspecialidade;
     }
     
     // Método para limpar especialidades
@@ -688,12 +724,14 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                     // Ativar modo edição
                     modoEdicao = true;
                     aplicarBloqueioCondicional(); // Liberar todos os campos preenchidos
+                    aplicarBloqueioCondicionalEspecialidades(); // Liberar todos os campos Especialidades preenchidos
                     btnEditar.setText("Cancelar");
                     btnEditar.setBackground(new Color(158, 158, 158)); // Cor cinza
                 } else {
                     // Cancelar edição - voltar ao estado original
                     modoEdicao = false;
                     aplicarBloqueioCondicional(); // Rebloquear campos preenchidos
+                    aplicarBloqueioCondicionalEspecialidades(); // Rebloquear campos Especialidades preenchidos
                     btnEditar.setText("Editar");
                     btnEditar.setBackground(new Color(255, 152, 0)); // Cor laranja original
                     preencherCamposComDadosTabela(paciente);
@@ -816,16 +854,44 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
             if (!txtEndereco.getText().trim().isEmpty()) {
                 pacienteSalvo.setEndereco(txtEndereco.getText().trim());
             }
-            // Salvar especialidades selecionadas
-            List<Especialidade> especialidadesSelecionadas = getEspecialidadesSelecionadas();
-            if (!especialidadesSelecionadas.isEmpty()) {
-                
-                
-                
+            
+            // Salva/atualiza os dados do paciente
+            System.out.println("paciente Salvo Painel Dados: " + pacienteSalvo.toString());
+            boolean pacienteSalvoComSucesso = pacienteDAO.atualizar(pacienteSalvo);
+
+            if (!pacienteSalvoComSucesso) {
+                JOptionPane.showMessageDialog(this, "Erro ao salvar dados do paciente!",
+                        "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
             }
             
-            System.out.println("paciente Salvo Painel Dados: "+pacienteSalvo.toString());
-            pacienteDAO.atualizar(pacienteSalvo);
+            // Salva as especialidades selecionadas
+            List<Especialidade> especialidadesSelecionadas = getEspecialidadesSelecionadas();
+            List<PacienteEspecialidade> listaPacienteEspecialidade = null;
+            if (!especialidadesSelecionadas.isEmpty()) {
+
+                // Cria a lista de PacienteEspecialidade
+                listaPacienteEspecialidade = listaPacienteEspecialidade(pacienteSalvo.getId(), especialidadesSelecionadas, null);
+                
+                // Insere todas as associações de uma vez
+                if (!listaPacienteEspecialidade.isEmpty()) {
+                    boolean especialidadesDeletadasComSucesso = pacienteEspecialidadeDAO.deletarPorPacienteId(pacienteSalvo.getId());
+                    boolean especialidadesSalvasComSucesso = pacienteEspecialidadeDAO.inserirLista(listaPacienteEspecialidade);
+
+                    if (!especialidadesSalvasComSucesso) {
+                        JOptionPane.showMessageDialog(this, 
+                            "Paciente salvo, mas houve problemas ao Salvar algumas especialidades.",
+                            "Aviso", JOptionPane.WARNING_MESSAGE);
+                    }
+                    if(!especialidadesDeletadasComSucesso){
+                        System.out.println("Paciente salvo, mas houve problemas ao Deletar as especialidades.");
+                    }
+                }
+            } else {
+                System.out.println("Nenhuma especialidade selecionada para o paciente.");
+            }
+            
+           
             
             JOptionPane.showMessageDialog(this,
                     "Paciente cadastrado com sucesso!",
@@ -834,13 +900,19 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
             // Cancelar edição - voltar ao estado original
             modoEdicao = false;
             aplicarBloqueioCondicional(); // Rebloquear campos preenchidos
+            aplicarBloqueioCondicionalEspecialidades(); // Rebloquear campos Especialidades preenchidos
             btnEditar.setText("Editar");
             btnEditar.setBackground(new Color(255, 152, 0)); // Cor laranja original
             preencherCamposComDadosTabela(pacienteSalvo);
+            setEspecialidadesSelecionadas(listaPacienteEspecialidade);
 
         } catch (HeadlessException ex) {
             JOptionPane.showMessageDialog(this, "Erro ao salvar paciente: " + ex.getMessage(),
                     "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Erro inesperado ao salvar: " + ex.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
         }
     }
     

@@ -1,6 +1,8 @@
 package com.mycompany.projeto_ibg;
 
 import com.mycompany.kafka.PacienteChangeListener;
+import com.mycompany.kafka.PacienteEspecialidadeChangeListener;
+import com.mycompany.kafka.PacienteEspecialidadeNotificationManager;
 import com.mycompany.kafka.PacienteNotificationManager;
 import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
@@ -24,7 +26,7 @@ import javax.swing.JLabel;
 import javax.swing.JWindow;
 import javax.swing.Timer;
 
-public class Main extends javax.swing.JFrame implements MenuListener, PacienteChangeListener {
+public class Main extends javax.swing.JFrame implements MenuListener, PacienteChangeListener, PacienteEspecialidadeChangeListener {
     
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(Main.class.getName());
     PacienteDAO pacienteDAO;
@@ -32,7 +34,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     EspecialidadeDAO especialidadeDAO;
     List<Especialidade> especialidades;
     PacienteEspecialidadeDAO pacienteEspecialidadeDAO;
-    List<PacienteEspecialidade> pacienteEspecialidade;
+    List<PacienteEspecialidade> pacienteEspecialidades;
     
     // Referências para os painéis ativos
     private PainelSaude2 painelSaudeAtivo;
@@ -59,11 +61,12 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         
         //carega o pacienteEspecialidadeDAO
         pacienteEspecialidadeDAO = new PacienteEspecialidadeDAO();
-        //carega a Lista de pacienteEspecialidade
-        pacienteEspecialidade = pacienteEspecialidadeDAO.listarTodos();
+        //carega a Lista de pacienteEspecialidades
+        pacienteEspecialidades = pacienteEspecialidadeDAO.listarTodos();
         
-        // Registrar como listener de mudanças de pacientes
+        // Registrar como listener de mudanças de pacientes e pacienteEspecialidade
         PacienteNotificationManager.getInstance().addListener(this);
+        PacienteEspecialidadeNotificationManager.getInstance().addListener(this);
         
         // Inicializa com o painel padrão
         onSaudeSelected(); 
@@ -71,9 +74,6 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     
     @Override
     public void onSaudeSelected() {
-        
-        System.out.println("com.mycompany.projeto_ibg.Main.onSaudeSelected()");
-        System.out.println(pacientes);
         
         painelSaudeAtivo = new PainelSaude2(pacientes);
         formularioSaudeAtivo = new FormularioSaude2P(pacienteDAO);
@@ -91,7 +91,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
 
     @Override
     public void onDadosSelected() {
-        painelDadosAtivo = new PainelDados2(pacientes, pacienteEspecialidade);
+        painelDadosAtivo = new PainelDados2(pacientes, pacienteEspecialidades);
         formularioDadosAtivo = new FormularioDados2P(pacienteDAO, pacienteEspecialidadeDAO, especialidades);
         
         refreshContentPainel(painelDadosAtivo);
@@ -105,10 +105,72 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         formularioSaudeAtivo = null;
     }
     
+    // Implementação dos métodos PacienteEspecialidadeChangeListener
+     @Override
+    public void onPacienteEspecialidadeAdded(PacienteEspecialidade pacienteEspecialidade) {
+        System.out.println("Nova associação paciente-especialidade adicionada: " + 
+                      "Paciente ID: " + pacienteEspecialidade.getPacienteId() + 
+                      ", Especialidade ID: " + pacienteEspecialidade.getEspecialidadeId());
+
+        // Atualizar a lista local
+        this.pacienteEspecialidades.add(pacienteEspecialidade);
+
+        // Atualizar apenas o painel de dados (que trabalha com especialidades)
+        if (painelDadosAtivo != null) {
+            // Recarregar a lista completa para garantir consistência
+            //this.pacienteEspecialidades = pacienteEspecialidadeDAO.listarTodos();
+            painelDadosAtivo.atualizarPacienteEspecialidade(this.pacienteEspecialidades);
+        }
+
+    }
+
+    @Override
+    public void onPacienteEspecialidadeUpdated(PacienteEspecialidade pacienteEspecialidade) {
+        System.out.println("Associação paciente-especialidade atualizada: " + 
+                      "Paciente ID: " + pacienteEspecialidade.getPacienteId() + 
+                      ", Especialidade ID: " + pacienteEspecialidade.getEspecialidadeId());
+
+        // Atualizar na lista local
+        for (int i = 0; i < this.pacienteEspecialidades.size(); i++) {
+            PacienteEspecialidade pe = this.pacienteEspecialidades.get(i);
+            if (pe.getPacienteId() == pacienteEspecialidade.getPacienteId() && pe.getEspecialidadeId() == pacienteEspecialidade.getEspecialidadeId()) {
+                this.pacienteEspecialidades.set(i, pacienteEspecialidade);
+                break;
+            }
+        }
+
+        // Atualizar painéis ativos
+        if (painelDadosAtivo != null) {
+            painelDadosAtivo.atualizarPacienteEspecialidade(this.pacienteEspecialidades);
+        }
+    }
+
+    @Override
+    public void onPacienteEspecialidadeDeleted(Integer pacienteId, Integer especialidadeId) {
+        System.out.println("Associação paciente-especialidade removida: " + 
+                      "Paciente ID: " + pacienteId + 
+                      ", Especialidade ID: " + especialidadeId);
+    
+        // Remover da lista local
+        this.pacienteEspecialidades.removeIf(pe -> 
+            pe.getPacienteId()== pacienteId && 
+            pe.getEspecialidadeId()== especialidadeId
+        );
+        
+        System.out.println("pacienteEspecialidades removido: ");
+        System.out.println(pacienteEspecialidades);
+
+        // Atualizar painéis ativos
+        if (painelDadosAtivo != null) {
+            painelDadosAtivo.atualizarPacienteEspecialidade(this.pacienteEspecialidades);
+        }
+    }
+    
     // Implementação dos métodos PacienteChangeListener
     @Override
     public void onPacienteAdded(Paciente paciente) {
         System.out.println("Novo paciente adicionado: " + paciente.getNome());
+        System.out.println("onPacienteAdded: "+paciente.toString());
         
         // Atualizar a lista local
         pacientes.add(paciente);
@@ -315,5 +377,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     private javax.swing.JPanel content2;
     private com.mycompany.view.Menu3 menu31;
     // End of variables declaration//GEN-END:variables
+
+   
  
 }

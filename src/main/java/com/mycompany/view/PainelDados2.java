@@ -220,12 +220,20 @@ public class PainelDados2 extends javax.swing.JPanel {
         jTable1.scrollRectToVisible(jTable1.getCellRect(lastRow, 0, true));
     }
     
+    public void atualizarPacienteEspecialidade(List<PacienteEspecialidade> novaListaPacienteEspecialidade) {
+        // Atualizar a lista interna
+        this.pacienteEspecialidades = novaListaPacienteEspecialidade;
+
+        // Recarregar/atualizar a exibição dos dados
+        // Exemplo: se você tem uma tabela ou lista visual
+    }
+    
     // Método para atualizar um paciente existente
     public void atualizarPaciente(Paciente pacienteAtualizado) {
         java.text.SimpleDateFormat formatoDesejado = new java.text.SimpleDateFormat("dd/MM/yyyy");
         java.text.SimpleDateFormat formatoISO = new java.text.SimpleDateFormat("yyyy-MM-dd");
         String dataFormatada = "";
-
+        
         // Formata a data de nascimento, se disponível
         if (pacienteAtualizado.getDataNascimento() != null && !pacienteAtualizado.getDataNascimento().isEmpty()) {
             try {
@@ -468,9 +476,7 @@ public class PainelDados2 extends javax.swing.JPanel {
         }
 
         // Filtra as especialidades relacionadas ao paciente usando stream
-        return pacienteEspecialidades.stream()
-                .filter(pe -> pe.getPacienteId() == paciente.getId())
-                .collect(Collectors.toList());
+        return pacienteEspecialidades.stream().filter(pe -> pe.getPacienteId() == paciente.getId()).collect(Collectors.toList());
     }
     
     private void setupCustomScrollPane() {

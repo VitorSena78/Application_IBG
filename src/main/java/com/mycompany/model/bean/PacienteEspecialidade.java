@@ -11,7 +11,7 @@ public class PacienteEspecialidade {
     
     private int pacienteId;
     private int especialidadeId;
-    private Date dataAtendimento;
+    private String dataAtendimento;
 
     public PacienteEspecialidade() {
         // Construtor padrão
@@ -35,11 +35,11 @@ public class PacienteEspecialidade {
         this.especialidadeId = especialidadeId;
     }
 
-    public Date getDataAtendimento() {
+    public String getDataAtendimento() {
         return dataAtendimento;
     }
 
-    public void setDataAtendimento(Date dataAtendimento) {
+    public void setDataAtendimento(String dataAtendimento) {
         this.dataAtendimento = dataAtendimento;
     }
 
@@ -47,7 +47,6 @@ public class PacienteEspecialidade {
     public String toString() {
         return "PacienteEspecialidade{" + "pacienteId=" + pacienteId + ", especialidadeId=" + especialidadeId + ", dataAtendimento=" + dataAtendimento + '}';
     }
-
     
     
 }

@@ -1,11 +1,14 @@
 package com.mycompany.projeto_ibg;
 
 import com.mycompany.kafka.PacienteConsumer;
+import com.mycompany.kafka.PacienteEspecialidadeConsumer;
 
 public class Projeto_IBG {
     
     private static PacienteConsumer pacienteConsumer;
-    private static Thread consumidorThread;
+    private static PacienteEspecialidadeConsumer pacienteEspecialidadeConsumer;
+    private static Thread pacienteConsumerThread;
+    private static Thread pacienteEspecialidadeConsumerThread;
 
     public static void main(String[] args) {
         System.out.println("Iniciando aplicação IBG...");
@@ -13,16 +16,37 @@ public class Projeto_IBG {
         // Configurar shutdown hook para limpar recursos
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("Encerrando aplicação...");
+            
+            // Parar o consumer da tabela Paciente
             if (pacienteConsumer != null) {
                 pacienteConsumer.shutdown();
+                System.out.println("Consumer Paciente parado.");
             }
-            if (consumidorThread != null && consumidorThread.isAlive()) {
+            
+            // Parar o consumer da tabela Paciente_has_Especialidade
+            if (pacienteEspecialidadeConsumer != null) {
+                pacienteEspecialidadeConsumer.shutdown();
+                System.out.println("Consumer Paciente_has_Especialidade parado.");
+            }
+            
+            // Aguardar threads terminarem
+            if (pacienteConsumerThread != null && pacienteConsumerThread.isAlive()) {
                 try {
-                    consumidorThread.join(3000); // Aguarda até 3 segundos
+                    pacienteConsumerThread.join(3000); // Aguarda até 3 segundos
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
             }
+            
+            if (pacienteEspecialidadeConsumerThread != null && pacienteEspecialidadeConsumerThread.isAlive()) {
+                try {
+                    pacienteEspecialidadeConsumerThread.join(3000); // Aguarda até 3 segundos
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            
+            System.out.println("Todos os consumers foram encerrados.");
         }));
         
         // Inicia a interface gráfica
@@ -36,21 +60,39 @@ public class Projeto_IBG {
             }
         });
         
-        // Inicia o consumidor Kafka em uma thread separada
+        // Inicia os consumidores Kafka em threads separadas
+        startKafkaConsumers();
+        
+        System.out.println("Aplicação IBG iniciada com sucesso!");
+    }
+    
+    private static void startKafkaConsumers() {
+        // Iniciar consumer para tabela Paciente
         try {
             pacienteConsumer = new PacienteConsumer();
-            consumidorThread = new Thread(pacienteConsumer);
-            consumidorThread.setDaemon(true); // Thread daemon não impede o JVM de encerrar
-            consumidorThread.setName("KafkaConsumerThread");
-            consumidorThread.start();
+            pacienteConsumerThread = new Thread(pacienteConsumer);
+            pacienteConsumerThread.setDaemon(true); // Thread daemon não impede o JVM de encerrar
+            pacienteConsumerThread.setName("PacienteKafkaConsumerThread");
+            pacienteConsumerThread.start();
             
-            System.out.println("Consumidor Kafka iniciado.");
+            System.out.println("✓ Consumer Paciente iniciado.");
         } catch (Exception e) {
-            System.err.println("Erro ao iniciar consumidor Kafka: " + e.getMessage());
+            System.err.println("Erro ao iniciar consumer Paciente: " + e.getMessage());
             e.printStackTrace();
         }
         
-        System.out.println("Aplicação IBG iniciada com sucesso!");
-    
+        // Iniciar consumer para tabela Paciente_has_Especialidade
+        try {
+            pacienteEspecialidadeConsumer = new PacienteEspecialidadeConsumer();
+            pacienteEspecialidadeConsumerThread = new Thread(pacienteEspecialidadeConsumer);
+            pacienteEspecialidadeConsumerThread.setDaemon(true); // Thread daemon não impede o JVM de encerrar
+            pacienteEspecialidadeConsumerThread.setName("PacienteEspecialidadeKafkaConsumerThread");
+            pacienteEspecialidadeConsumerThread.start();
+            
+            System.out.println("✓ Consumer Paciente_has_Especialidade iniciado.");
+        } catch (Exception e) {
+            System.err.println("Erro ao iniciar consumer Paciente_has_Especialidade: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

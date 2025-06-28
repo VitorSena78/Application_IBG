@@ -56,25 +56,117 @@ public class PacienteEspecialidadeDAO {
     }
 
     /**
-     * Converte java.util.Date para java.sql.Date
+     * Obtém a data atual formatada como String
      */
-    private java.sql.Date convertUtilDateToSqlDate(java.util.Date utilDate) {
-        if (utilDate == null) {
-            return null;
+    private String getDataAtual() {
+        return inputDateFormat.format(new java.util.Date());
+    }
+    
+    //Insere uma lista de associações PacienteEspecialidade na tabela
+    public boolean inserirLista(List<PacienteEspecialidade> listaPacienteEspecialidade) {
+        if (listaPacienteEspecialidade == null || listaPacienteEspecialidade.isEmpty()) {
+            JOptionPane.showMessageDialog(null, "Lista vazia ou nula. Nenhuma associação para inserir.");
+            return false;
         }
-        return new java.sql.Date(utilDate.getTime());
+
+        String sql = "INSERT INTO Paciente_has_Especialidade (Paciente_id, Especialidade_id, data_atendimento) VALUES (?, ?, ?)";
+
+        // Desabilita o autocommit para usar transação
+        boolean autoCommitOriginal = false;
+        try {
+            autoCommitOriginal = con.getAutoCommit();
+            con.setAutoCommit(false);
+
+            try (PreparedStatement stmt = con.prepareStatement(sql)) {
+                int insercoesRealizadas = 0;
+                int duplicatasEncontradas = 0;
+
+                for (PacienteEspecialidade pe : listaPacienteEspecialidade) {
+                    // Verifica se a associação já existe antes de inserir
+                    if (existeAssociacao(pe.getPacienteId(), pe.getEspecialidadeId())) {
+                        duplicatasEncontradas++;
+                        System.out.println("Associação já existe: Paciente ID " + pe.getPacienteId() + 
+                                         " - Especialidade ID " + pe.getEspecialidadeId());
+                        continue; // Pula para o próximo item
+                    }
+
+                    stmt.setInt(1, pe.getPacienteId());
+                    stmt.setInt(2, pe.getEspecialidadeId());
+
+                    // Converte String para java.sql.Date
+                    java.sql.Date sqlDate = convertStringToSqlDate(pe.getDataAtendimento());
+                    stmt.setDate(3, sqlDate);
+
+                    stmt.addBatch(); // Adiciona ao lote
+                    insercoesRealizadas++;
+                }
+
+                if (insercoesRealizadas > 0) {
+                    // Executa todas as inserções em lote
+                    int[] resultados = stmt.executeBatch();
+
+                    // Verifica se todas as inserções foram bem-sucedidas
+                    for (int resultado : resultados) {
+                        if (resultado == PreparedStatement.EXECUTE_FAILED) {
+                            throw new SQLException("Falha em uma das inserções do lote");
+                        }
+                    }
+
+                    // Confirma a transação
+                    con.commit();
+
+                    System.out.printf(
+                        "Inserção em lote concluída!\n✓ %d associações inseridas com sucesso\n%s",
+                        insercoesRealizadas,
+                        duplicatasEncontradas > 0 
+                            ? duplicatasEncontradas + " associações já existiam e foram ignoradas.\n" 
+                            : ""
+                    );
+                    
+                    return true;
+
+                } else {
+                    con.rollback();
+                    JOptionPane.showMessageDialog(null, 
+                        "Nenhuma nova associação foi inserida.\n" +
+                        (duplicatasEncontradas > 0 ? 
+                            "Todas as " + duplicatasEncontradas + " associações já existiam." : 
+                            "Lista estava vazia."));
+                    return false;
+                }
+
+            } catch (SQLException e) {
+                // Desfaz a transação em caso de erro
+                con.rollback();
+                throw e;
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(null, 
+                "Erro ao inserir lista de associações: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+
+        } finally {
+            // Restaura o autocommit original
+            try {
+                con.setAutoCommit(autoCommitOriginal);
+            } catch (SQLException e) {
+                System.err.println("Erro ao restaurar autocommit: " + e.getMessage());
+            }
+        }
     }
 
     // INSERT - Associa um paciente a uma especialidade
     public boolean inserir(PacienteEspecialidade pe) {
-        String sql = "INSERT INTO PacienteEspecialidade (paciente_id, especialidade_id, data_atendimento) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO Paciente_has_Especialidade (Paciente_id, Especialidade_id, data_atendimento) VALUES (?, ?, ?)";
 
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, pe.getPacienteId());
             stmt.setInt(2, pe.getEspecialidadeId());
             
-            // Converte java.util.Date para java.sql.Date
-            java.sql.Date sqlDate = convertUtilDateToSqlDate(pe.getDataAtendimento());
+            // Converte String para java.sql.Date
+            java.sql.Date sqlDate = convertStringToSqlDate(pe.getDataAtendimento());
             stmt.setDate(3, sqlDate);
 
             int rows = stmt.executeUpdate();
@@ -94,7 +186,7 @@ public class PacienteEspecialidadeDAO {
     // SELECT * - Lista todas as associações
     public List<PacienteEspecialidade> listarTodos() {
         List<PacienteEspecialidade> lista = new ArrayList<>();
-        String sql = "SELECT * FROM PacienteEspecialidade";
+        String sql = "SELECT * FROM Paciente_has_Especialidade";
         
         try (PreparedStatement stmt = con.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
@@ -112,7 +204,7 @@ public class PacienteEspecialidadeDAO {
     // SELECT por paciente_id - Lista todas as especialidades de um paciente
     public List<PacienteEspecialidade> buscarPorPacienteId(int pacienteId) {
         List<PacienteEspecialidade> lista = new ArrayList<>();
-        String sql = "SELECT * FROM PacienteEspecialidade WHERE paciente_id = ?";
+        String sql = "SELECT * FROM Paciente_has_Especialidade WHERE Paciente_id = ?";
         
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, pacienteId);
@@ -132,7 +224,7 @@ public class PacienteEspecialidadeDAO {
     // SELECT por especialidade_id - Lista todos os pacientes de uma especialidade
     public List<PacienteEspecialidade> buscarPorEspecialidadeId(int especialidadeId) {
         List<PacienteEspecialidade> lista = new ArrayList<>();
-        String sql = "SELECT * FROM PacienteEspecialidade WHERE especialidade_id = ?";
+        String sql = "SELECT * FROM Paciente_has_Especialidade WHERE Especialidade_id = ?";
         
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, especialidadeId);
@@ -151,7 +243,7 @@ public class PacienteEspecialidadeDAO {
 
     // SELECT específico - Busca uma associação específica por paciente e especialidade
     public PacienteEspecialidade buscarPorPacienteEEspecialidade(int pacienteId, int especialidadeId) {
-        String sql = "SELECT * FROM PacienteEspecialidade WHERE paciente_id = ? AND especialidade_id = ?";
+        String sql = "SELECT * FROM Paciente_has_Especialidade WHERE Paciente_id = ? AND Especialidade_id = ?";
         
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, pacienteId);
@@ -170,11 +262,11 @@ public class PacienteEspecialidadeDAO {
 
     // UPDATE - Atualiza a data de atendimento de uma associação
     public boolean atualizar(PacienteEspecialidade pe) {
-        String sql = "UPDATE PacienteEspecialidade SET data_atendimento = ? WHERE paciente_id = ? AND especialidade_id = ?";
+        String sql = "UPDATE Paciente_has_Especialidade SET data_atendimento = ? WHERE Paciente_id = ? AND Especialidade_id = ?";
         
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
-            // Converte java.util.Date para java.sql.Date
-            java.sql.Date sqlDate = convertUtilDateToSqlDate(pe.getDataAtendimento());
+            // Converte String para java.sql.Date
+            java.sql.Date sqlDate = convertStringToSqlDate(pe.getDataAtendimento());
             stmt.setDate(1, sqlDate);
             stmt.setInt(2, pe.getPacienteId());
             stmt.setInt(3, pe.getEspecialidadeId());
@@ -188,7 +280,7 @@ public class PacienteEspecialidadeDAO {
 
     // DELETE - Remove uma associação específica
     public boolean deletar(int pacienteId, int especialidadeId) {
-        String sql = "DELETE FROM PacienteEspecialidade WHERE paciente_id = ? AND especialidade_id = ?";
+        String sql = "DELETE FROM Paciente_has_Especialidade WHERE Paciente_id = ? AND Especialidade_id = ?";
         
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, pacienteId);
@@ -202,7 +294,7 @@ public class PacienteEspecialidadeDAO {
 
     // DELETE todas as associações de um paciente
     public boolean deletarPorPacienteId(int pacienteId) {
-        String sql = "DELETE FROM PacienteEspecialidade WHERE paciente_id = ?";
+        String sql = "DELETE FROM Paciente_has_Especialidade WHERE Paciente_id = ?";
         
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, pacienteId);
@@ -215,7 +307,7 @@ public class PacienteEspecialidadeDAO {
 
     // DELETE todas as associações de uma especialidade
     public boolean deletarPorEspecialidadeId(int especialidadeId) {
-        String sql = "DELETE FROM PacienteEspecialidade WHERE especialidade_id = ?";
+        String sql = "DELETE FROM Paciente_has_Especialidade WHERE Especialidade_id = ?";
         
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, especialidadeId);
@@ -228,7 +320,7 @@ public class PacienteEspecialidadeDAO {
 
     // Verifica se uma associação já existe
     public boolean existeAssociacao(int pacienteId, int especialidadeId) {
-        String sql = "SELECT COUNT(*) FROM PacienteEspecialidade WHERE paciente_id = ? AND especialidade_id = ?";
+        String sql = "SELECT COUNT(*) FROM Paciente_has_Especialidade WHERE Paciente_id = ? AND Especialidade_id = ?";
         
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, pacienteId);
@@ -248,14 +340,13 @@ public class PacienteEspecialidadeDAO {
     // Método auxiliar para montar objeto PacienteEspecialidade a partir do ResultSet
     private PacienteEspecialidade carregarDoResultSet(ResultSet rs) throws SQLException {
         PacienteEspecialidade pe = new PacienteEspecialidade();
-        pe.setPacienteId(rs.getInt("paciente_id"));
-        pe.setEspecialidadeId(rs.getInt("especialidade_id"));
+        pe.setPacienteId(rs.getInt("Paciente_id"));
+        pe.setEspecialidadeId(rs.getInt("Especialidade_id"));
         
-        // Converte java.sql.Date para java.util.Date
+        // Converte java.sql.Date para String
         java.sql.Date sqlDate = rs.getDate("data_atendimento");
-        if (sqlDate != null) {
-            pe.setDataAtendimento(new java.util.Date(sqlDate.getTime()));
-        }
+        String dataString = convertSqlDateToString(sqlDate);
+        pe.setDataAtendimento(dataString);
         
         return pe;
     }

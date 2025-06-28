@@ -57,14 +57,14 @@ public class EspecialidadeDAO {
      */
     public List<Especialidade> listarTodas() {
         List<Especialidade> lista = new ArrayList<>();
-        String sql = "SELECT idEspecialidade, nome FROM Especialidade ORDER BY nome";
+        String sql = "SELECT id, nome FROM Especialidade ORDER BY nome";
         
         try (PreparedStatement stmt = connection.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             
             while (rs.next()) {
                 Especialidade e = new Especialidade();
-                e.setIdEspecialidade(rs.getInt("idEspecialidade"));
+                e.setId(rs.getInt("id"));
                 e.setNome(rs.getString("nome"));
                 lista.add(e);
             }
@@ -89,14 +89,14 @@ public class EspecialidadeDAO {
             return null;
         }
 
-        String sql = "SELECT idEspecialidade, nome FROM Especialidade WHERE idEspecialidade = ?";
+        String sql = "SELECT id, nome FROM Especialidade WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, id);
             
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     Especialidade e = new Especialidade();
-                    e.setIdEspecialidade(rs.getInt("idEspecialidade"));
+                    e.setId(rs.getInt("id"));
                     e.setNome(rs.getString("nome"));
                     
                     LOGGER.info("Especialidade encontrada: ID " + id);
@@ -118,29 +118,29 @@ public class EspecialidadeDAO {
      * @return true se atualizada com sucesso, false caso contrário
      */
     public boolean atualizar(Especialidade especialidade) {
-        if (especialidade == null || especialidade.getIdEspecialidade() <= 0 || 
+        if (especialidade == null || especialidade.getId() <= 0 || 
             especialidade.getNome() == null || especialidade.getNome().trim().isEmpty()) {
             LOGGER.warning("Dados inválidos para atualização de especialidade");
             return false;
         }
 
-        String sql = "UPDATE Especialidade SET nome = ? WHERE idEspecialidade = ?";
+        String sql = "UPDATE Especialidade SET nome = ? WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, especialidade.getNome().trim());
-            stmt.setInt(2, especialidade.getIdEspecialidade());
+            stmt.setInt(2, especialidade.getId());
             
             int rowsAffected = stmt.executeUpdate();
             
             if (rowsAffected > 0) {
-                LOGGER.info("Especialidade atualizada: ID " + especialidade.getIdEspecialidade());
+                LOGGER.info("Especialidade atualizada: ID " + especialidade.getId());
                 return true;
             } else {
-                LOGGER.warning("Nenhuma especialidade encontrada para atualizar: ID " + especialidade.getIdEspecialidade());
+                LOGGER.warning("Nenhuma especialidade encontrada para atualizar: ID " + especialidade.getId());
                 return false;
             }
             
         } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Erro ao atualizar especialidade: ID " + especialidade.getIdEspecialidade(), e);
+            LOGGER.log(Level.SEVERE, "Erro ao atualizar especialidade: ID " + especialidade.getId(), e);
             return false;
         }
     }
@@ -156,7 +156,7 @@ public class EspecialidadeDAO {
             return false;
         }
 
-        String sql = "DELETE FROM Especialidade WHERE idEspecialidade = ?";
+        String sql = "DELETE FROM Especialidade WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, id);
             

@@ -1,6 +1,8 @@
 package com.mycompany.kafka;
 
 import com.mycompany.model.bean.Paciente;
+import com.mycompany.model.bean.PacienteEspecialidade;
+import java.util.List;
 
 /**
  *
