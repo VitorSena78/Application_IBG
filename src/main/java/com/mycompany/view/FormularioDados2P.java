@@ -897,14 +897,17 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                     "Paciente cadastrado com sucesso!",
                     "Sucesso", JOptionPane.INFORMATION_MESSAGE);
             
+            //Preenche os campos
+            preencherCamposComDadosTabela(pacienteSalvo);
+            setEspecialidadesSelecionadas(listaPacienteEspecialidade);
+            
             // Cancelar edição - voltar ao estado original
             modoEdicao = false;
             aplicarBloqueioCondicional(); // Rebloquear campos preenchidos
             aplicarBloqueioCondicionalEspecialidades(); // Rebloquear campos Especialidades preenchidos
             btnEditar.setText("Editar");
             btnEditar.setBackground(new Color(255, 152, 0)); // Cor laranja original
-            preencherCamposComDadosTabela(pacienteSalvo);
-            setEspecialidadesSelecionadas(listaPacienteEspecialidade);
+
 
         } catch (HeadlessException ex) {
             JOptionPane.showMessageDialog(this, "Erro ao salvar paciente: " + ex.getMessage(),
