@@ -1,5 +1,6 @@
-package com.mycompany.view;
+package com.mycompany.viewNaoUsadas;
 
+import com.mycompany.view.*;
 import com.mycompany.components.JCheckBoxCustom;
 import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
@@ -25,13 +26,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
-public class FormularioDados2P extends javax.swing.JPanel implements PatientSelectionListener {
+public class FormularioDados2PListaDeEspecialidades extends javax.swing.JPanel implements PatientSelectionListener {
 
-    private static final Color BORDER_COLOR = new Color(226, 232, 240);
-    
-    // Cor para a barra de rolagem personalizada
-    private static final Color SCROLLBAR_TRACK_COLOR = new Color(248, 250, 252);
-    
     // Lista para armazenar os registros de pacientes
     private List<Paciente> listaPacientes;
     Paciente paciente = new Paciente();
@@ -106,7 +102,7 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         }
     }
 
-    public FormularioDados2P(PacienteDAO pacienteDAO, PacienteEspecialidadeDAO pacienteEspecialidadeDAO, EspecialidadeDAO especialidadeDAO, List<Especialidade> especialidades) {
+    public FormularioDados2PListaDeEspecialidades(PacienteDAO pacienteDAO, PacienteEspecialidadeDAO pacienteEspecialidadeDAO, EspecialidadeDAO especialidadeDAO, List<Especialidade> especialidades) {
         listaPacientes = new ArrayList<>();
         
         //especialidades selecionadas - MOVER PARA ANTES do initComponents
@@ -167,30 +163,9 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         scrollEspecialidades.setPreferredSize(new Dimension(440, 120));
         scrollEspecialidades.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollEspecialidades.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        setupCustomScrollPane();
-    }
-    
-    private void setupCustomScrollPane(){
-        // Configuração básica do scroll pane
-        scrollEspecialidades.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
-        scrollEspecialidades.getViewport().setBackground(Color.WHITE);
-        
-        // Personalizar a barra de rolagem vertical
-        JScrollBar verticalScrollBar = scrollEspecialidades.getVerticalScrollBar();
-        verticalScrollBar.setUI(new ModernScrollBarUI());
-        verticalScrollBar.setPreferredSize(new Dimension(12, 0));
-        verticalScrollBar.setBackground(SCROLLBAR_TRACK_COLOR);
-        
-        
-        // Configurações adicionais do scroll pane
-        scrollEspecialidades.setBackground(Color.WHITE);
-        scrollEspecialidades.getViewport().setOpaque(true);
-        
-        // Remover bordas desnecessárias
-        scrollEspecialidades.setViewportBorder(null);
-        scrollEspecialidades.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
-        
-        
+        scrollEspecialidades.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 200, 200)),
+                BorderFactory.createEmptyBorder(2, 2, 2, 2)));
     }
 
     @Override

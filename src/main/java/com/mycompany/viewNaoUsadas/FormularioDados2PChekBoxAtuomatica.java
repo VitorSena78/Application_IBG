@@ -1,5 +1,6 @@
-package com.mycompany.view;
+package com.mycompany.viewNaoUsadas;
 
+import com.mycompany.view.*;
 import com.mycompany.components.JCheckBoxCustom;
 import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
@@ -16,22 +17,18 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.awt.Insets;
 
-public class FormularioDados2P extends javax.swing.JPanel implements PatientSelectionListener {
+public class FormularioDados2PChekBoxAtuomatica extends javax.swing.JPanel implements PatientSelectionListener {
 
-    private static final Color BORDER_COLOR = new Color(226, 232, 240);
-    
-    // Cor para a barra de rolagem personalizada
-    private static final Color SCROLLBAR_TRACK_COLOR = new Color(248, 250, 252);
-    
     // Lista para armazenar os registros de pacientes
     private List<Paciente> listaPacientes;
     Paciente paciente = new Paciente();
@@ -47,75 +44,26 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     private boolean modoEdicao = false; 
     
     private Printer printer;
-
-    // NOVA IMPLEMENTAÇÃO COM JLIST
-    private JList<EspecialidadeCheckBox> listaEspecialidades;
-    private DefaultListModel<EspecialidadeCheckBox> modeloLista;
-    private JScrollPane scrollEspecialidades;
     
-    // Classe interna para representar uma especialidade com checkbox
-    private class EspecialidadeCheckBox {
-        private Especialidade especialidade;
-        private boolean selecionada;
-        
-        public EspecialidadeCheckBox(Especialidade especialidade) {
-            this.especialidade = especialidade;
-            this.selecionada = false;
-        }
-        
-        // getters e setters
-        public Especialidade getEspecialidade() { return especialidade; }
-        public boolean isSelecionada() { return selecionada; }
-        public void setSelecionada(boolean selecionada) { this.selecionada = selecionada; }
-        
-        @Override
-        public String toString() {
-            return especialidade.getNome();
-        }
-    }
-    
-    // Renderer customizado para mostrar checkboxes na JList
-    private class EspecialidadeListCellRenderer extends JCheckBox implements ListCellRenderer<EspecialidadeCheckBox> {
-        
-        @Override
-        public Component getListCellRendererComponent(
-                JList<? extends EspecialidadeCheckBox> list,
-                EspecialidadeCheckBox value,
-                int index,
-                boolean isSelected,
-                boolean cellHasFocus) {
-            
-            setComponentOrientation(list.getComponentOrientation());
-            
-            setFont(new Font("Arial", 0, 12));
-            setText(value.toString());
-            setSelected(value.isSelecionada());
-            
-            if (isSelected) {
-                setBackground(list.getSelectionBackground());
-                setForeground(list.getSelectionForeground());
-            } else {
-                setBackground(list.getBackground());
-                setForeground(list.getForeground());
-            }
-            
-            setEnabled(list.isEnabled());
-            setOpaque(true);
-            
-            return this;
-        }
-    }
+    // NOVOS ATRIBUTOS PARA CHECKBOXES DINÂMICOS
+    private Map<Integer, JCheckBox> especialidadeCheckBoxes;
+    private JPanel panelEspecialidades;
 
-    public FormularioDados2P(PacienteDAO pacienteDAO, PacienteEspecialidadeDAO pacienteEspecialidadeDAO, EspecialidadeDAO especialidadeDAO, List<Especialidade> especialidades) {
+    public FormularioDados2PChekBoxAtuomatica(PacienteDAO pacienteDAO, PacienteEspecialidadeDAO pacienteEspecialidadeDAO, EspecialidadeDAO especialidadeDAO, List<Especialidade> especialidades) {
         listaPacientes = new ArrayList<>();
+        this.pacienteDAO = pacienteDAO;
         
-        //especialidades selecionadas - MOVER PARA ANTES do initComponents
+        //especialidades selecionadas
         this.especialidades = especialidades;
         this.pacienteEspecialidadeDAO = pacienteEspecialidadeDAO;
         
-        initComponents(); // Agora criarListaEspecialidades() é chamada dentro deste método
+        // Inicializar o Map de checkboxes
+        this.especialidadeCheckBoxes = new HashMap<>();
         
-        this.pacienteDAO = pacienteDAO;
+        initComponents();
+        
+        // Criar checkboxes dinamicamente APÓS initComponents
+        criarCheckboxesEspecialidades();
         
         // Inicializar o printer com as dependências necessárias
         this.printer = new Printer(this, pacienteEspecialidadeDAO, especialidadeDAO, especialidades);
@@ -124,73 +72,46 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         setOpaque(false); // Importante para o efeito de borda funcionar
     }
 
-    private void criarListaEspecialidades() {
-        modeloLista = new DefaultListModel<>();
+    // NOVO MÉTODO PARA CRIAR CHECKBOXES DINAMICAMENTE
+    private void criarCheckboxesEspecialidades() {
+        // Limpar checkboxes existentes
+        especialidadeCheckBoxes.clear();
+        panelEspecialidades.removeAll();
         
-        // Adicionar especialidades à lista
-        if (especialidades != null) {
-            for (Especialidade esp : especialidades) {
-                modeloLista.addElement(new EspecialidadeCheckBox(esp));
-            }
+        if (especialidades == null || especialidades.isEmpty()) {
+            System.out.println("Lista de especialidades vazia!");
+            return;
+        }
+
+        // Configurar layout do panel (GridLayout com 4 colunas)
+        int totalEspecialidades = especialidades.size();
+        int linhas = (totalEspecialidades + 3) / 4; // Calcula linhas necessárias para 4 colunas
+        panelEspecialidades.setLayout(new GridLayout(linhas, 4, 15, 3));
+        panelEspecialidades.setOpaque(false);
+
+        // Criar checkbox para cada especialidade
+        for (Especialidade especialidade : especialidades) {
+            JCheckBoxCustom checkbox = new JCheckBoxCustom();
+            checkbox.setFont(new Font("Arial", 0, 12));
+            checkbox.setText(especialidade.getNome());
+            checkbox.setOpaque(false);
+            
+            // Armazenar no Map usando o ID da especialidade como chave
+            especialidadeCheckBoxes.put(especialidade.getId(), checkbox);
+            
+            // Adicionar ao panel
+            panelEspecialidades.add(checkbox);
         }
         
-        listaEspecialidades = new JList<>(modeloLista);
-        listaEspecialidades.setCellRenderer(new EspecialidadeListCellRenderer());
-        listaEspecialidades.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        listaEspecialidades.setLayoutOrientation(JList.VERTICAL);
-        listaEspecialidades.setVisibleRowCount(-1); // Mostra todas as linhas disponíveis
+        // Preencher espaços vazios se necessário
+        int espacosVazios = (linhas * 4) - totalEspecialidades;
+        for (int i = 0; i < espacosVazios; i++) {
+            panelEspecialidades.add(new JLabel("")); // Label vazio para ocupar espaço
+        }
         
-        // Configurar aparência
-        listaEspecialidades.setFont(new Font("Arial", 0, 12));
-        listaEspecialidades.setBackground(new Color(245, 248, 250));
-        listaEspecialidades.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-        
-        // Listener para clique
-        listaEspecialidades.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (!listaEspecialidades.isEnabled()) {
-                    return; // Não permite clique se estiver desabilitado
-                }
-                
-                int index = listaEspecialidades.locationToIndex(e.getPoint());
-                if (index >= 0) {
-                    EspecialidadeCheckBox item = modeloLista.getElementAt(index);
-                    item.setSelecionada(!item.isSelecionada());
-                    listaEspecialidades.repaint();
-                }
-            }
-        });
-        
-        // Criar ScrollPane para a lista
-        scrollEspecialidades = new JScrollPane(listaEspecialidades);
-        scrollEspecialidades.setPreferredSize(new Dimension(440, 120));
-        scrollEspecialidades.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollEspecialidades.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        setupCustomScrollPane();
-    }
-    
-    private void setupCustomScrollPane(){
-        // Configuração básica do scroll pane
-        scrollEspecialidades.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
-        scrollEspecialidades.getViewport().setBackground(Color.WHITE);
-        
-        // Personalizar a barra de rolagem vertical
-        JScrollBar verticalScrollBar = scrollEspecialidades.getVerticalScrollBar();
-        verticalScrollBar.setUI(new ModernScrollBarUI());
-        verticalScrollBar.setPreferredSize(new Dimension(12, 0));
-        verticalScrollBar.setBackground(SCROLLBAR_TRACK_COLOR);
-        
-        
-        // Configurações adicionais do scroll pane
-        scrollEspecialidades.setBackground(Color.WHITE);
-        scrollEspecialidades.getViewport().setOpaque(true);
-        
-        // Remover bordas desnecessárias
-        scrollEspecialidades.setViewportBorder(null);
-        scrollEspecialidades.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
-        
-        
+        // Atualizar o painel
+        panelEspecialidades.revalidate();
+        panelEspecialidades.repaint();
     }
 
     @Override
@@ -260,8 +181,9 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         lblEspecialidades.setFont(new java.awt.Font("Arial", 1, 12));
         lblEspecialidades.setText("Especialidades Médicas:");
 
-        // *** CRIAR A LISTA DE ESPECIALIDADES ANTES DO LAYOUT ***
-        criarListaEspecialidades();
+        // SUBSTITUIÇÃO: Criar o panel que vai conter os checkboxes dinâmicos
+        panelEspecialidades = new JPanel();
+        panelEspecialidades.setOpaque(false);
 
         // Configurar título
         lblTitulo.setFont(new java.awt.Font("Arial", 1, 20));
@@ -403,9 +325,9 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                                 .addComponent(lblSus)
                                 .addComponent(txtSus, javax.swing.GroupLayout.PREFERRED_SIZE, 260, javax.swing.GroupLayout.PREFERRED_SIZE)))
 
-                        // Especialidades - agora usando JList
+                        // SUBSTITUIÇÃO: Especialidades agora dinâmicas
                         .addComponent(lblEspecialidades)
-                        .addComponent(scrollEspecialidades, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(panelEspecialidades, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
 
                         // Botões
                         .addGroup(layout.createSequentialGroup()
@@ -463,10 +385,10 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                         .addComponent(txtSus, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGap(20, 20, 20)
 
-                    // Especialidades médicas - agora usando JList
+                    // SUBSTITUIÇÃO: Especialidades médicas - agora dinâmicas
                     .addComponent(lblEspecialidades)
                     .addGap(10, 10, 10)
-                    .addComponent(scrollEspecialidades, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(panelEspecialidades, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGap(25, 25, 25)
 
                     // Botões
@@ -478,43 +400,45 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                     .addContainerGap(30, Short.MAX_VALUE))
         );
         
-        // Define tamanho preferido do painel
-        this.setPreferredSize(new Dimension(500, 750));
+        // Define tamanho preferido do painel - AJUSTADO para as mesmas dimensões do Formulario2
+        this.setPreferredSize(new Dimension(500, 750)); // Reduzido devido à otimização do layout
     }// </editor-fold>//GEN-END:initComponents
 
-    // MÉTODOS ATUALIZADOS PARA USAR JLIST
+    // MÉTODO ATUALIZADO: Usa checkboxes dinâmicos
     private void setEspecialidadesSelecionadas(List<PacienteEspecialidade> pacienteEspecialidades) {
         // Limpar todas as seleções primeiro
         limparEspecialidades();
 
+        // Verificar se a lista é válida
         if (pacienteEspecialidades == null || pacienteEspecialidades.isEmpty()) {
             System.out.println("pacienteEspecialidades é null ou está vazio");
             return;
         }
 
-        // Selecionar itens na lista baseado nos IDs das especialidades
+        // Selecionar checkboxes baseado nos IDs das especialidades
         for (PacienteEspecialidade pe : pacienteEspecialidades) {
-            for (int i = 0; i < modeloLista.getSize(); i++) {
-                EspecialidadeCheckBox item = modeloLista.getElementAt(i);
-                if (item.getEspecialidade().getId() == pe.getEspecialidadeId()) {
-                    item.setSelecionada(true);
-                    break;
-                }
+            JCheckBox checkbox = especialidadeCheckBoxes.get(pe.getEspecialidadeId());
+            if (checkbox != null) {
+                checkbox.setSelected(true);
+            } else {
+                System.out.println("Checkbox não encontrado para especialidade ID: " + pe.getEspecialidadeId());
             }
         }
-        
-        // Atualizar a visualização da lista
-        listaEspecialidades.repaint();
     }
     
-    // Método para obter especialidades selecionadas da JList
+    // MÉTODO ATUALIZADO: Obter especialidades selecionadas dinamicamente
     private List<Especialidade> getEspecialidadesSelecionadas() {
         List<Especialidade> especialidadesSelecionadas = new ArrayList<>();
         
-        for (int i = 0; i < modeloLista.getSize(); i++) {
-            EspecialidadeCheckBox item = modeloLista.getElementAt(i);
-            if (item.isSelecionada()) {
-                especialidadesSelecionadas.add(item.getEspecialidade());
+        for (Map.Entry<Integer, JCheckBox> entry : especialidadeCheckBoxes.entrySet()) {
+            if (entry.getValue().isSelected()) {
+                // Buscar a especialidade na lista pelo ID
+                for (Especialidade esp : especialidades) {
+                    if (esp.getId() == entry.getKey()) {
+                        especialidadesSelecionadas.add(esp);
+                        break;
+                    }
+                }
             }
         }
         
@@ -556,32 +480,24 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         return listaPacienteEspecialidade;
     }
     
-    // Método para limpar especialidades na JList
+    // MÉTODO ATUALIZADO: Limpar especialidades dinamicamente
     private void limparEspecialidades() {
-        for (int i = 0; i < modeloLista.getSize(); i++) {
-            EspecialidadeCheckBox item = modeloLista.getElementAt(i);
-            item.setSelecionada(false);
+        for (JCheckBox checkbox : especialidadeCheckBoxes.values()) {
+            checkbox.setSelected(false);
         }
-        listaEspecialidades.repaint();
     }
     
-    // Método para aplicar bloqueio condicional nas especialidades
+    // MÉTODO ATUALIZADO: Aplicar bloqueio condicional nas especialidades
     private void aplicarBloqueioCondicionalEspecialidades() {
-        listaEspecialidades.setEnabled(modoEdicao || !temEspecialidadesSelecionadas());
-        
-        // Mudar a cor de fundo para indicar se está habilitado ou não
-        if (listaEspecialidades.isEnabled()) {
-            listaEspecialidades.setBackground(new Color(245, 248, 250));
-        } else {
-            listaEspecialidades.setBackground(new Color(240, 240, 240));
+        for (JCheckBox checkbox : especialidadeCheckBoxes.values()) {
+            checkbox.setEnabled(modoEdicao || !temEspecialidadesSelecionadas());
         }
     }
     
-    // Método para verificar se há especialidades selecionadas
+    // MÉTODO ATUALIZADO: Verificar se há especialidades selecionadas
     private boolean temEspecialidadesSelecionadas() {
-        for (int i = 0; i < modeloLista.getSize(); i++) {
-            EspecialidadeCheckBox item = modeloLista.getElementAt(i);
-            if (item.isSelecionada()) {
+        for (JCheckBox checkbox : especialidadeCheckBoxes.values()) {
+            if (checkbox.isSelected()) {
                 return true;
             }
         }
@@ -996,14 +912,10 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                 JOptionPane.INFORMATION_MESSAGE);
     }
     
-    // Método para atualizar a lista de especialidades (caso seja necessário recarregar do banco)
+    // NOVO MÉTODO: Para atualizar especialidades caso a lista mude no banco
     public void atualizarEspecialidades(List<Especialidade> novasEspecialidades) {
         this.especialidades = novasEspecialidades;
-        criarListaEspecialidades();
-        
-        // Reposicionar o scrollPane no layout se necessário
-        scrollEspecialidades.revalidate();
-        scrollEspecialidades.repaint();
+        criarCheckboxesEspecialidades();
     }
 
     @Override
@@ -1048,7 +960,8 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     private javax.swing.JButton btnExcluir;
     private javax.swing.JButton btnImprimir;
     
-    // Especialidades médicas - agora usando JList
+    // Especialidades médicas - ATUALIZADO para versão dinâmica
     private javax.swing.JLabel lblEspecialidades;
+    // REMOVIDO: Todos os checkboxes individuais foram substituídos pelo Map e Panel dinâmicos
     // End of variables declaration//GEN-END:variables
 }
