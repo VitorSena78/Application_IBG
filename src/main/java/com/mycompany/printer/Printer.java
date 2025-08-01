@@ -32,6 +32,13 @@ public class Printer {
     private static final String STATUS_CANCELADA = "CANCELADA";
     private static final String STATUS_ERRO = "ERRO";
     
+    // Especialidades que não devem incluir Enfermagem
+    private static final Set<String> ESPECIALIDADES_SEM_ENFERMAGEM = Set.of(
+        "DENTISTA", "PSICOLOGIA", "TERAPEUTA"
+    );
+    
+    private static final String ESPECIALIDADE_ENFERMAGEM = "ENFERMAGEM";
+    
     private static final Font FONTE_IMPRESSAO = new Font("Courier New", Font.PLAIN, 10);
     private static final Insets MARGEM_IMPRESSAO = new Insets(30, 30, 30, 30);
     private static final SimpleDateFormat FORMATO_DATA = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
@@ -59,6 +66,7 @@ public class Printer {
     private final PacienteEspecialidadeDAO pacienteEspecialidadeDAO;
     private final EspecialidadeDAO especialidadeDAO;
     private final Map<Integer, String> especialidadesCache;
+    private final Map<String, Integer> nomeParaIdCache;
 
     // Construtor otimizado
     public Printer(Component parent, PacienteEspecialidadeDAO pacienteEspecialidadeDAO, 
@@ -68,6 +76,7 @@ public class Printer {
         this.especialidadeDAO = especialidadeDAO;
         // Cache das especialidades para evitar buscas repetidas
         this.especialidadesCache = criarCacheEspecialidades(especialidades);
+        this.nomeParaIdCache = criarCacheNomeParaId(especialidades);
     }
     
     /**
@@ -79,6 +88,21 @@ public class Printer {
         }
         return especialidades.stream()
                 .collect(Collectors.toMap(Especialidade::getId, Especialidade::getNome));
+    }
+    
+    /**
+     * Cria um cache reverso (nome -> id) para buscar IDs por nome
+     */
+    private Map<String, Integer> criarCacheNomeParaId(List<Especialidade> especialidades) {
+        if (especialidades == null) {
+            return new HashMap<>();
+        }
+        return especialidades.stream()
+                .collect(Collectors.toMap(
+                    esp -> esp.getNome().toUpperCase(), 
+                    Especialidade::getId,
+                    (existing, replacement) -> existing
+                ));
     }
     
     /**
@@ -97,15 +121,72 @@ public class Printer {
                 return;
             }
 
-            if (!confirmarImpressaoMultipla(especialidadesPaciente.size())) {
+            // Agrupar especialidades para impressão
+            List<GrupoImpressao> gruposImpressao = criarGruposImpressao(especialidadesPaciente);
+            
+            if (!confirmarImpressaoMultipla(gruposImpressao.size())) {
                 return;
             }
 
-            processarImpressaoMultipla(paciente, especialidadesPaciente);
+            processarImpressaoGrupos(paciente, gruposImpressao);
 
         } catch (Exception ex) {
             mostrarErro("Erro geral ao imprimir: " + ex.getMessage());
         }
+    }
+    
+    /**
+     * Cria grupos de especialidades para impressão considerando a regra da Enfermagem
+     */
+    private List<GrupoImpressao> criarGruposImpressao(List<PacienteEspecialidade> especialidadesPaciente) {
+        List<GrupoImpressao> grupos = new ArrayList<>();
+        Integer enfermagemId = nomeParaIdCache.get(ESPECIALIDADE_ENFERMAGEM);
+        
+        // Separar especialidades por tipo
+        List<PacienteEspecialidade> especialidadesSemEnfermagem = new ArrayList<>();
+        List<PacienteEspecialidade> especialidadesComEnfermagem = new ArrayList<>();
+        PacienteEspecialidade enfermagem = null;
+        
+        for (PacienteEspecialidade pe : especialidadesPaciente) {
+            String nomeEspecialidade = obterNomeEspecialidade(pe.getEspecialidadeId());
+            
+            if (ESPECIALIDADE_ENFERMAGEM.equalsIgnoreCase(nomeEspecialidade)) {
+                enfermagem = pe;
+            } else if (nomeEspecialidade != null && 
+                      ESPECIALIDADES_SEM_ENFERMAGEM.contains(nomeEspecialidade.toUpperCase())) {
+                especialidadesSemEnfermagem.add(pe);
+            } else {
+                especialidadesComEnfermagem.add(pe);
+            }
+        }
+        
+        // Criar grupos para especialidades que devem incluir enfermagem
+        for (PacienteEspecialidade pe : especialidadesComEnfermagem) {
+            List<PacienteEspecialidade> grupo = new ArrayList<>();
+            grupo.add(pe);
+            
+            // Adicionar enfermagem se existir no sistema e não for a própria especialidade
+            if (enfermagemId != null && pe.getEspecialidadeId() != enfermagemId.intValue()) {
+                PacienteEspecialidade enfermagemParaGrupo = new PacienteEspecialidade();
+                enfermagemParaGrupo.setPacienteId(pe.getPacienteId());
+                enfermagemParaGrupo.setEspecialidadeId(enfermagemId);
+                grupo.add(enfermagemParaGrupo);
+            }
+            
+            grupos.add(new GrupoImpressao(grupo, true));
+        }
+        
+        // Criar grupos para especialidades que não devem incluir enfermagem
+        for (PacienteEspecialidade pe : especialidadesSemEnfermagem) {
+            grupos.add(new GrupoImpressao(Collections.singletonList(pe), false));
+        }
+        
+        // Se enfermagem foi selecionada sozinha, criar um grupo só para ela
+        if (enfermagem != null && especialidadesComEnfermagem.isEmpty()) {
+            grupos.add(new GrupoImpressao(Collections.singletonList(enfermagem), false));
+        }
+        
+        return grupos;
     }
     
     /**
@@ -134,57 +215,79 @@ public class Printer {
     /**
      * Confirma a impressão de múltiplas fichas
      */
-    private boolean confirmarImpressaoMultipla(int totalEspecialidades) {
-        String mensagem = totalEspecialidades == 1 
-            ? "Será impressa 1 ficha para a especialidade do paciente.\nDeseja continuar?"
-            : String.format("Serão impressas %d fichas (uma para cada especialidade).\nDeseja continuar?", totalEspecialidades);
+    private boolean confirmarImpressaoMultipla(int totalGrupos) {
+        String mensagem = totalGrupos == 1 
+            ? "Será impressa 1 ficha para o paciente.\nDeseja continuar?"
+            : String.format("Serão impressas %d fichas para o paciente.\nDeseja continuar?", totalGrupos);
         
         return JOptionPane.showConfirmDialog(parent, mensagem, TITULO_CONFIRMACAO, 
                 JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION;
     }
     
     /**
-     * Processa a impressão de múltiplas fichas
+     * Processa a impressão de múltiplos grupos
      */
-    private void processarImpressaoMultipla(Paciente paciente, List<PacienteEspecialidade> especialidadesPaciente) {
+    private void processarImpressaoGrupos(Paciente paciente, List<GrupoImpressao> grupos) {
         ResultadoImpressao resultado = new ResultadoImpressao();
         
-        for (PacienteEspecialidade pe : especialidadesPaciente) {
-            processarImpressaoEspecialidade(paciente, pe, resultado);
+        for (GrupoImpressao grupo : grupos) {
+            processarImpressaoGrupo(paciente, grupo, resultado);
         }
         
         mostrarResumoImpressao(resultado);
     }
     
     /**
-     * Processa a impressão de uma especialidade específica
+     * Processa a impressão de um grupo específico
      */
-    private void processarImpressaoEspecialidade(Paciente paciente, PacienteEspecialidade pe, ResultadoImpressao resultado) {
-        String nomeEspecialidade = obterNomeEspecialidade(pe.getEspecialidadeId());
-        
+    private void processarImpressaoGrupo(Paciente paciente, GrupoImpressao grupo, ResultadoImpressao resultado) {
         try {
-            StatusAtendimento status = verificarStatusAtendimento(pe.getEspecialidadeId(), nomeEspecialidade);
+            // Obter numerações e verificar status para especialidades que contam
+            Map<Integer, String> numeracoes = new HashMap<>();
+            boolean algumaCancelada = false;
             
-            if (status.isCancelado()) {
-                resultado.adicionarResultado(nomeEspecialidade, STATUS_CANCELADA, StatusImpressao.CANCELADA);
+            for (PacienteEspecialidade pe : grupo.getEspecialidades()) {
+                String nomeEspecialidade = obterNomeEspecialidade(pe.getEspecialidadeId());
+                
+                // Para enfermagem adicionada automaticamente, não verificar status nem contar
+                if (grupo.isTemEnfermagemAutomatica() && 
+                    ESPECIALIDADE_ENFERMAGEM.equalsIgnoreCase(nomeEspecialidade) && 
+                    !grupo.isEspecialidadePrincipal(pe)) {
+                    numeracoes.put(pe.getEspecialidadeId(), "ACOMPANHAMENTO");
+                    continue;
+                }
+                
+                StatusAtendimento status = verificarStatusAtendimento(pe.getEspecialidadeId(), nomeEspecialidade);
+                
+                if (status.isCancelado()) {
+                    algumaCancelada = true;
+                    break;
+                }
+                
+                numeracoes.put(pe.getEspecialidadeId(), status.getNumeracao());
+            }
+            
+            if (algumaCancelada) {
+                String nomeGrupo = grupo.obterNomeGrupo(especialidadesCache);
+                resultado.adicionarResultado(nomeGrupo, STATUS_CANCELADA, StatusImpressao.CANCELADA);
                 return;
             }
             
-            boolean impressaoSucesso = executarImpressao(paciente, pe, status.getNumeracao());
+            boolean impressaoSucesso = executarImpressaoGrupo(paciente, grupo, numeracoes);
+            String nomeGrupo = grupo.obterNomeGrupo(especialidadesCache);
             
             if (impressaoSucesso) {
                 resultado.incrementarSucesso();
-                resultado.adicionarResultado(nomeEspecialidade, 
-                    status.getNumeracao() != null ? status.getNumeracao() : STATUS_ESGOTADO, 
-                    StatusImpressao.SUCESSO);
+                resultado.adicionarResultado(nomeGrupo, "IMPRESSA COM SUCESSO", StatusImpressao.SUCESSO);
             } else {
                 resultado.incrementarErro();
-                resultado.adicionarResultado(nomeEspecialidade, "FALHA NA IMPRESSÃO", StatusImpressao.ERRO);
+                resultado.adicionarResultado(nomeGrupo, "FALHA NA IMPRESSÃO", StatusImpressao.ERRO);
             }
             
         } catch (Exception ex) {
+            String nomeGrupo = grupo.obterNomeGrupo(especialidadesCache);
             resultado.incrementarErro();
-            resultado.adicionarResultado(nomeEspecialidade, STATUS_ERRO + ": " + ex.getMessage(), StatusImpressao.ERRO);
+            resultado.adicionarResultado(nomeGrupo, STATUS_ERRO + ": " + ex.getMessage(), StatusImpressao.ERRO);
         }
     }
     
@@ -217,14 +320,11 @@ public class Printer {
     }
     
     /**
-     * Executa a impressão física do documento
+     * Executa a impressão física do documento para um grupo
      */
-    private boolean executarImpressao(Paciente paciente, PacienteEspecialidade pe, String numeracao) {
+    private boolean executarImpressaoGrupo(Paciente paciente, GrupoImpressao grupo, Map<Integer, String> numeracoes) {
         try {
-            Map<Integer, String> numeracaoMap = Collections.singletonMap(pe.getEspecialidadeId(), numeracao);
-            List<PacienteEspecialidade> especialidadeUnica = Collections.singletonList(pe);
-            
-            String conteudoImpressao = criarDocumentoImpressao(paciente, especialidadeUnica, numeracaoMap);
+            String conteudoImpressao = criarDocumentoImpressao(paciente, grupo.getEspecialidades(), numeracoes);
             
             JTextArea areaImpressao = new JTextArea(conteudoImpressao);
             areaImpressao.setFont(FONTE_IMPRESSAO);
@@ -232,7 +332,6 @@ public class Printer {
             
             return areaImpressao.print();
         } catch (PrinterException ex) {
-            // Log do erro ou tratamento específico se necessário
             throw new RuntimeException("Erro ao executar impressão: " + ex.getMessage(), ex);
         }
     }
@@ -278,21 +377,53 @@ public class Printer {
 
         try {
             String nomeEspecialidade = obterNomeEspecialidade(especialidadeId);
-            StatusAtendimento status = verificarStatusAtendimento(especialidadeId, nomeEspecialidade);
             
-            if (status.isCancelado()) {
-                return;
-            }
-
+            // Criar grupo considerando a regra da enfermagem
             PacienteEspecialidade pe = new PacienteEspecialidade();
             pe.setPacienteId(paciente.getId());
             pe.setEspecialidadeId(especialidadeId);
+            
+            List<GrupoImpressao> grupos = criarGruposImpressao(Collections.singletonList(pe));
+            
+            if (grupos.isEmpty()) {
+                mostrarErro("Erro ao criar grupo de impressão!");
+                return;
+            }
+            
+            GrupoImpressao grupo = grupos.get(0);
+            Map<Integer, String> numeracoes = new HashMap<>();
+            boolean algumaCancelada = false;
+            
+            for (PacienteEspecialidade peGrupo : grupo.getEspecialidades()) {
+                String nomeEsp = obterNomeEspecialidade(peGrupo.getEspecialidadeId());
+                
+                // Para enfermagem adicionada automaticamente
+                if (grupo.isTemEnfermagemAutomatica() && 
+                    ESPECIALIDADE_ENFERMAGEM.equalsIgnoreCase(nomeEsp) && 
+                    !grupo.isEspecialidadePrincipal(peGrupo)) {
+                    numeracoes.put(peGrupo.getEspecialidadeId(), "ACOMPANHAMENTO");
+                    continue;
+                }
+                
+                StatusAtendimento status = verificarStatusAtendimento(peGrupo.getEspecialidadeId(), nomeEsp);
+                
+                if (status.isCancelado()) {
+                    algumaCancelada = true;
+                    break;
+                }
+                
+                numeracoes.put(peGrupo.getEspecialidadeId(), status.getNumeracao());
+            }
+            
+            if (algumaCancelada) {
+                return;
+            }
 
-            boolean sucesso = executarImpressao(paciente, pe, status.getNumeracao());
+            boolean sucesso = executarImpressaoGrupo(paciente, grupo, numeracoes);
 
             if (sucesso) {
-                String mensagem = String.format("Ficha impressa com sucesso!\nEspecialidade: %s\nAtendimento: %s",
-                        nomeEspecialidade, status.getNumeracao());
+                String mensagem = String.format("Ficha impressa com sucesso!\n%s", 
+                        grupo.obterDescricaoDetalhada(especialidadesCache, numeracoes));
                 JOptionPane.showMessageDialog(parent, mensagem, "Impressão Realizada", JOptionPane.INFORMATION_MESSAGE);
             }
 
@@ -363,6 +494,59 @@ public class Printer {
         public boolean isCancelado() { return cancelado; }
     }
     
+    /**
+     * Classe para representar um grupo de especialidades que serão impressas juntas
+     */
+    private static class GrupoImpressao {
+        private final List<PacienteEspecialidade> especialidades;
+        private final boolean temEnfermagemAutomatica;
+        private final PacienteEspecialidade especialidadePrincipal;
+        
+        public GrupoImpressao(List<PacienteEspecialidade> especialidades, boolean temEnfermagemAutomatica) {
+            this.especialidades = new ArrayList<>(especialidades);
+            this.temEnfermagemAutomatica = temEnfermagemAutomatica;
+            this.especialidadePrincipal = especialidades.get(0); // Primeira é sempre a principal
+        }
+        
+        public List<PacienteEspecialidade> getEspecialidades() {
+            return especialidades;
+        }
+        
+        public boolean isTemEnfermagemAutomatica() {
+            return temEnfermagemAutomatica;
+        }
+        
+        public boolean isEspecialidadePrincipal(PacienteEspecialidade pe) {
+            return pe.getEspecialidadeId() == especialidadePrincipal.getEspecialidadeId();
+        }
+        
+        public String obterNomeGrupo(Map<Integer, String> cache) {
+            if (especialidades.size() == 1) {
+                return cache.get(especialidades.get(0).getEspecialidadeId());
+            } else {
+                // Para grupos com múltiplas especialidades, mostrar a principal
+                String principal = cache.get(especialidadePrincipal.getEspecialidadeId());
+                return principal + " + Enfermagem";
+            }
+        }
+        
+        public String obterDescricaoDetalhada(Map<Integer, String> cache, Map<Integer, String> numeracoes) {
+            StringBuilder desc = new StringBuilder();
+            for (int i = 0; i < especialidades.size(); i++) {
+                PacienteEspecialidade pe = especialidades.get(i);
+                String nome = cache.get(pe.getEspecialidadeId());
+                String numeracao = numeracoes.get(pe.getEspecialidadeId());
+                
+                if (i > 0) desc.append("\n");
+                desc.append("• ").append(nome);
+                if (numeracao != null) {
+                    desc.append(" - ").append(numeracao);
+                }
+            }
+            return desc.toString();
+        }
+    }
+    
     private static class ResultadoImpressao {
         private int fichasImpressas = 0;
         private int fichasComErro = 0;
@@ -418,7 +602,7 @@ public class Printer {
             resumo.append("\n");
             
             // Detalhes por especialidade
-            resumo.append("📋 DETALHES POR ESPECIALIDADE:\n");
+            resumo.append("📋 DETALHES POR FICHA:\n");
             for (Map.Entry<String, String> entry : resultado.getDetalhes().entrySet()) {
                 StatusImpressao status = resultado.getStatus().get(entry.getKey());
                 resumo.append(status.getEmoji()).append(" ")
@@ -571,6 +755,8 @@ public class Printer {
                         if (numeracao != null) {
                             if (STATUS_ESGOTADO.equals(numeracao)) {
                                 documento.append(" - ATENDIMENTOS ESGOTADOS");
+                            } else if ("ACOMPANHAMENTO".equals(numeracao)) {
+                                documento.append(" - ACOMPANHAMENTO");
                             } else {
                                 documento.append(" - Atendimento Nº ").append(numeracao);
                             }
