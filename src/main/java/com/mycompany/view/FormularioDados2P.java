@@ -4,8 +4,10 @@ import com.mycompany.components.JCheckBoxCustom;
 import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
 import com.mycompany.model.bean.PacienteEspecialidade;
+import com.mycompany.model.dao.EspecialidadeDAO;
 import com.mycompany.model.dao.PacienteDAO;
 import com.mycompany.model.dao.PacienteEspecialidadeDAO;
+import com.mycompany.printer.Printer;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -37,8 +39,10 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
   
     // Controla se está em modo de edição
     private boolean modoEdicao = false; 
+    
+    private Printer printer;
 
-    public FormularioDados2P(PacienteDAO pacienteDAO, PacienteEspecialidadeDAO pacienteEspecialidadeDAO, List<Especialidade> especialidades) {
+    public FormularioDados2P(PacienteDAO pacienteDAO, PacienteEspecialidadeDAO pacienteEspecialidadeDAO, EspecialidadeDAO especialidadeDAO, List<Especialidade> especialidades) {
         listaPacientes = new ArrayList<>();
         initComponents();
         this.pacienteDAO = pacienteDAO;
@@ -46,6 +50,9 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         //especialidades selecionadas
         this.especialidades = especialidades;
         this.pacienteEspecialidadeDAO = pacienteEspecialidadeDAO;
+        
+        // Inicializar o printer com as dependências necessárias
+        this.printer = new Printer(this, pacienteEspecialidadeDAO, especialidadeDAO, especialidades);
         
         setupEvents();
         setOpaque(false); // Importante para o efeito de borda funcionar
@@ -934,179 +941,7 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     
     //Metodo para imprimir
     private void imprimirDadosPaciente() {
-        // Verifica se há um paciente selecionado
-        if (paciente == null || paciente.getNome() == null || paciente.getNome().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Não há dados de paciente para imprimir!",
-                    "Aviso", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        try {
-            // Cria um documento de impressão
-            StringBuilder dadosImpressao = new StringBuilder();
-            dadosImpressao.append("===============================================\n");
-            dadosImpressao.append("           FICHA DO PACIENTE\n");
-            dadosImpressao.append("===============================================\n\n");
-
-            // === DADOS PESSOAIS ===
-            dadosImpressao.append("DADOS PESSOAIS:\n");
-            dadosImpressao.append("-----------------------------------------------\n");
-
-            if (paciente.getNome() != null && !paciente.getNome().trim().isEmpty()) {
-                dadosImpressao.append("Nome: ").append(paciente.getNome()).append("\n");
-            }
-
-            if (paciente.getDataNascimento() != null && !paciente.getDataNascimento().trim().isEmpty()) {
-                dadosImpressao.append("Data de Nascimento: ").append(paciente.getDataNascimento()).append("\n");
-            }
-
-            if (paciente.getIdade() != null) {
-                dadosImpressao.append("Idade: ").append(paciente.getIdade()).append(" anos\n");
-            }
-
-            if (paciente.getNomeDaMae() != null && !paciente.getNomeDaMae().trim().isEmpty()) {
-                dadosImpressao.append("Nome da Mãe: ").append(paciente.getNomeDaMae()).append("\n");
-            }
-
-            if (paciente.getCpf() != null && !paciente.getCpf().trim().isEmpty()) {
-                dadosImpressao.append("CPF: ").append(paciente.getCpf()).append("\n");
-            }
-
-            if (paciente.getSus() != null && !paciente.getSus().trim().isEmpty()) {
-                dadosImpressao.append("Cartão SUS: ").append(paciente.getSus()).append("\n");
-            }
-
-            if (paciente.getTelefone() != null && !paciente.getTelefone().trim().isEmpty()) {
-                dadosImpressao.append("Telefone: ").append(paciente.getTelefone()).append("\n");
-            }
-
-            if (paciente.getEndereco() != null && !paciente.getEndereco().trim().isEmpty()) {
-                dadosImpressao.append("Endereço: ").append(paciente.getEndereco()).append("\n");
-            }
-
-            // === SINAIS VITAIS ===
-            boolean temSinaisVitais = false;
-            StringBuilder sinaisVitais = new StringBuilder();
-            sinaisVitais.append("\n\nSINAIS VITAIS:\n");
-            sinaisVitais.append("-----------------------------------------------\n");
-
-            if (paciente.getPaXmmhg() != null && !paciente.getPaXmmhg().trim().isEmpty()) {
-                sinaisVitais.append("Pressão Arterial: ").append(paciente.getPaXmmhg()).append("\n");
-                temSinaisVitais = true;
-            }
-
-            if (paciente.getFcBpm() > 0) {
-                sinaisVitais.append("Frequência Cardíaca: ").append(paciente.getFcBpm()).append(" bpm\n");
-                temSinaisVitais = true;
-            }
-
-            if (paciente.getFrIbpm() > 0) {
-                sinaisVitais.append("Frequência Respiratória: ").append(paciente.getFrIbpm()).append(" rpm\n");
-                temSinaisVitais = true;
-            }
-
-            if (paciente.getTemperaturaC() > 0) {
-                sinaisVitais.append("Temperatura: ").append(String.format("%.1f", paciente.getTemperaturaC())).append(" °C\n");
-                temSinaisVitais = true;
-            }
-
-            if (paciente.getHgtMgld() > 0) {
-                sinaisVitais.append("Glicemia: ").append(paciente.getHgtMgld()).append(" mg/dL\n");
-                temSinaisVitais = true;
-            }
-
-            if (paciente.getSpo2() > 0) {
-                sinaisVitais.append("Saturação O2: ").append(String.format("%.1f", paciente.getSpo2())).append(" %\n");
-                temSinaisVitais = true;
-            }
-
-            if (temSinaisVitais) {
-                dadosImpressao.append(sinaisVitais);
-            }
-
-            // === DADOS ANTROPOMÉTRICOS ===
-            boolean temDadosAntro = false;
-            StringBuilder dadosAntro = new StringBuilder();
-            dadosAntro.append("\n\nDADOS ANTROPOMÉTRICOS:\n");
-            dadosAntro.append("-----------------------------------------------\n");
-
-            if (paciente.getPeso() > 0) {
-                dadosAntro.append("Peso: ").append(String.format("%.2f", paciente.getPeso())).append(" kg\n");
-                temDadosAntro = true;
-            }
-
-            if (paciente.getAltura() > 0) {
-                dadosAntro.append("Altura: ").append(String.format("%.2f", paciente.getAltura())).append(" m\n");
-                temDadosAntro = true;
-            }
-
-            if (paciente.getImc() > 0) {
-                dadosAntro.append("IMC: ").append(String.format("%.2f", paciente.getImc())).append(" kg/m²\n");
-
-                // Classificação do IMC
-                float imc = paciente.getImc();
-                String classificacao;
-                if (imc < 18.5) {
-                    classificacao = "Abaixo do peso";
-                } else if (imc < 25) {
-                    classificacao = "Peso normal";
-                } else if (imc < 30) {
-                    classificacao = "Sobrepeso";
-                } else if (imc < 35) {
-                    classificacao = "Obesidade Grau I";
-                } else if (imc < 40) {
-                    classificacao = "Obesidade Grau II";
-                } else {
-                    classificacao = "Obesidade Grau III";
-                }
-                dadosAntro.append("Classificação IMC: ").append(classificacao).append("\n");
-                temDadosAntro = true;
-            }
-
-            if (temDadosAntro) {
-                dadosImpressao.append(dadosAntro);
-            }
-            
-            // === ESPECIALIDADES MÉDICAS ===
-            if (pacienteEspecialidades != null && !pacienteEspecialidades.isEmpty()) {
-                dadosImpressao.append("\n\nESPECIALIDADES MÉDICAS:\n");
-                dadosImpressao.append("-----------------------------------------------\n");
-
-                for (PacienteEspecialidade pe : pacienteEspecialidades) {
-                    String nomeEspecialidade = buscarNomeEspecialidadePorId(pe.getEspecialidadeId());
-
-                    if (nomeEspecialidade != null) {
-                        dadosImpressao.append("• ").append(nomeEspecialidade);
-
-                        dadosImpressao.append("\n");
-                    }
-                }
-            }
-
-            // === RODAPÉ ===
-            dadosImpressao.append("\n\n");
-            dadosImpressao.append("===============================================\n");
-            dadosImpressao.append("Data/Hora da impressão: ").append(new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date())).append("\n");
-            dadosImpressao.append("Sistema de Gestão de Pacientes\n");
-            dadosImpressao.append("===============================================");
-
-            // Cria uma área de texto para impressão
-            JTextArea areaImpressao = new JTextArea(dadosImpressao.toString());
-            areaImpressao.setFont(new Font("Courier New", Font.PLAIN, 10));
-            areaImpressao.setMargin(new Insets(30, 30, 30, 30));
-
-            // Tenta imprimir
-            boolean impresso = areaImpressao.print();
-
-            if (impresso) {
-                JOptionPane.showMessageDialog(this, "Ficha do paciente enviada para impressão com sucesso!",
-                        "Impressão", JOptionPane.INFORMATION_MESSAGE);
-            }
-
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Erro ao imprimir: " + ex.getMessage(),
-                    "Erro de Impressão", JOptionPane.ERROR_MESSAGE);
-        }
+        printer.imprimirDadosPaciente(paciente);
     }
 
     // Método para limpar campos

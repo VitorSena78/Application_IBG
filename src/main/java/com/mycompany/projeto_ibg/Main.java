@@ -76,7 +76,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     public void onSaudeSelected() {
         
         painelSaudeAtivo = new PainelSaude2(pacientes);
-        formularioSaudeAtivo = new FormularioSaude2P(pacienteDAO);
+        formularioSaudeAtivo = new FormularioSaude2P(pacienteDAO, pacienteEspecialidadeDAO, especialidadeDAO, especialidades);
         
         refreshContentPainel(painelSaudeAtivo);
         refreshContentFormulario(formularioSaudeAtivo);
@@ -92,7 +92,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     @Override
     public void onDadosSelected() {
         painelDadosAtivo = new PainelDados2(pacientes, pacienteEspecialidades);
-        formularioDadosAtivo = new FormularioDados2P(pacienteDAO, pacienteEspecialidadeDAO, especialidades);
+        formularioDadosAtivo = new FormularioDados2P(pacienteDAO, pacienteEspecialidadeDAO, especialidadeDAO, especialidades);
         
         refreshContentPainel(painelDadosAtivo);
         refreshContentFormulario(formularioDadosAtivo);
