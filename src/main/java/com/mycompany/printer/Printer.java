@@ -1,5 +1,20 @@
 package com.mycompany.printer;
 
+import com.itextpdf.io.font.constants.StandardFonts;
+import com.itextpdf.io.image.ImageData;
+import com.itextpdf.io.image.ImageDataFactory;
+import com.itextpdf.kernel.colors.ColorConstants;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.font.PdfFontFactory;
+import com.itextpdf.kernel.geom.PageSize;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.borders.Border;
+import com.itextpdf.layout.borders.SolidBorder;
+import com.itextpdf.layout.element.*;
+import com.itextpdf.layout.properties.*;
+
 import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
 import com.mycompany.model.bean.PacienteEspecialidade;
@@ -7,18 +22,18 @@ import com.mycompany.model.dao.EspecialidadeDAO;
 import com.mycompany.model.dao.PacienteEspecialidadeDAO;
 
 import java.awt.Component;
-import java.awt.Font;
-import java.awt.Insets;
-import java.awt.print.PrinterException;
+import java.awt.Desktop;
+import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 import javax.swing.JOptionPane;
-import javax.swing.JTextArea;
 
 /**
- * Classe responsável pela impressão de fichas de pacientes
- * Otimizada para melhor performance e manutenibilidade
+ * Classe responsável pela impressão de fichas de pacientes com iText PDF
+ * Design profissional otimizado para uma página
  * 
  * @author vitor
  */
@@ -31,6 +46,7 @@ public class Printer {
     private static final String STATUS_ESGOTADO = "ESGOTADO";
     private static final String STATUS_CANCELADA = "CANCELADA";
     private static final String STATUS_ERRO = "ERRO";
+    private static final String LOGO_PATH = "/home/vitor/NetBeansProjects/projeto_IBG/src/main/resources/imagens/logo_cecom.png";
     
     // Especialidades que não devem incluir Enfermagem
     private static final Set<String> ESPECIALIDADES_SEM_ENFERMAGEM = Set.of(
@@ -38,10 +54,8 @@ public class Printer {
     );
     
     private static final String ESPECIALIDADE_ENFERMAGEM = "ENFERMAGEM";
-    
-    private static final Font FONTE_IMPRESSAO = new Font("Courier New", Font.PLAIN, 10);
-    private static final Insets MARGEM_IMPRESSAO = new Insets(30, 30, 30, 30);
-    private static final SimpleDateFormat FORMATO_DATA = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+    private static final SimpleDateFormat FORMATO_DATA = new SimpleDateFormat("dd/MM/yyyy");
+    private static final SimpleDateFormat FORMATO_DATA_HORA = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
     
     // Enum para status de impressão
     public enum StatusImpressao {
@@ -68,13 +82,12 @@ public class Printer {
     private final Map<Integer, String> especialidadesCache;
     private final Map<String, Integer> nomeParaIdCache;
 
-    // Construtor otimizado
+    // Construtor
     public Printer(Component parent, PacienteEspecialidadeDAO pacienteEspecialidadeDAO, 
-                   EspecialidadeDAO especialidadeDAO, List<Especialidade> especialidades) {
+                     EspecialidadeDAO especialidadeDAO, List<Especialidade> especialidades) {
         this.parent = parent;
         this.pacienteEspecialidadeDAO = pacienteEspecialidadeDAO;
         this.especialidadeDAO = especialidadeDAO;
-        // Cache das especialidades para evitar buscas repetidas
         this.especialidadesCache = criarCacheEspecialidades(especialidades);
         this.nomeParaIdCache = criarCacheNomeParaId(especialidades);
     }
@@ -273,7 +286,7 @@ public class Printer {
                 return;
             }
             
-            boolean impressaoSucesso = executarImpressaoGrupo(paciente, grupo, numeracoes);
+            boolean impressaoSucesso = executarImpressaoPDF(paciente, grupo, numeracoes);
             String nomeGrupo = grupo.obterNomeGrupo(especialidadesCache);
             
             if (impressaoSucesso) {
@@ -288,6 +301,449 @@ public class Printer {
             String nomeGrupo = grupo.obterNomeGrupo(especialidadesCache);
             resultado.incrementarErro();
             resultado.adicionarResultado(nomeGrupo, STATUS_ERRO + ": " + ex.getMessage(), StatusImpressao.ERRO);
+        }
+    }
+    
+    /**
+     * Executa a impressão em PDF usando iText
+     */
+    private boolean executarImpressaoPDF(Paciente paciente, GrupoImpressao grupo, Map<Integer, String> numeracoes) {
+        try {
+            // Diretório onde os PDFs serão salvos
+            File diretorio = new File(System.getProperty("user.home"), "Documents");
+
+            
+            if (!diretorio.exists()) {
+                diretorio = new File(System.getProperty("user.home"), "Documentos");
+            }
+            
+            // Criar o diretório se não existir
+            if (!diretorio.exists()) {
+                boolean criouDiretorio = diretorio.mkdirs();
+                if (!criouDiretorio) {
+                    throw new RuntimeException("Não foi possível criar o diretório: ");
+                }
+            }
+
+            // Criar nome do arquivo único com timestamp
+            String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+            String nomeArquivo = String.format("ficha_%s_%s.pdf", 
+                    paciente.getNome().replaceAll("[^a-zA-Z0-9]", "_"),
+                    timestamp);
+
+            File arquivoPDF = new File(diretorio, nomeArquivo);
+
+            // Criar o documento PDF
+            PdfWriter writer = new PdfWriter(arquivoPDF.getAbsolutePath());
+            PdfDocument pdfDoc = new PdfDocument(writer);
+            Document document = new Document(pdfDoc, PageSize.A4);
+
+            // Configurar margens menores para maximizar espaço
+            document.setMargins(15, 15, 15, 15);
+
+            // Criar o conteúdo do PDF
+            criarConteudoPDF(document, paciente, grupo.getEspecialidades(), numeracoes);
+
+            // Fechar o documento
+            document.close();
+
+            // Abrir o PDF automaticamente para visualização/impressão
+            abrirPDF(arquivoPDF);
+
+            return true;
+
+        } catch (Exception ex) {
+            throw new RuntimeException("Erro ao criar PDF: " + ex.getMessage(), ex);
+        }
+    }
+
+    
+    /**
+     * Cria o conteúdo completo do PDF
+     */
+    private void criarConteudoPDF(Document document, Paciente paciente, 
+                                 List<PacienteEspecialidade> especialidades,
+                                 Map<Integer, String> numeracoes) throws IOException {
+        
+        // Fontes
+        PdfFont fonteTitulo = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
+        PdfFont fonteNormal = PdfFontFactory.createFont(StandardFonts.HELVETICA);
+        
+        // 1. CABEÇALHO (compacto)
+        adicionarCabecalho(document, fonteTitulo, fonteNormal);
+        
+        // 2. DADOS PESSOAIS DO PACIENTE (mais compacto)
+        adicionarDadosPessoais(document, paciente, fonteTitulo, fonteNormal);
+        
+        // 3. ATENDIMENTO DE TRIAGEM/ESPECIALIDADE
+        adicionarAtendimentoEspecialidades(document, especialidades, numeracoes, fonteTitulo, fonteNormal);
+        
+        // 4. PARÂMETROS CLÍNICOS (mais compacto)
+        adicionarParametrosClinicos(document, paciente, fonteTitulo, fonteNormal);
+        
+        // 5. PATOLOGIAS (uma linha só)
+        adicionarPatologias(document, fonteTitulo, fonteNormal);
+        
+        // 6. AVALIAÇÃO MÉDICA (maior espaço com linhas)
+        adicionarAvaliacaoMedica(document, fonteTitulo, fonteNormal);
+    }
+    
+    /**
+     * Adiciona o cabeçalho com logo e título (mais compacto)
+     */
+    private void adicionarCabecalho(Document document, PdfFont fonteTitulo, PdfFont fonteNormal) throws IOException {
+        Table cabecalhoTable = new Table(UnitValue.createPercentArray(new float[]{1, 3, 1}))
+                .useAllAvailableWidth();
+        
+        // Logo 
+        try {
+            File logoFile = new File(LOGO_PATH);
+            if (logoFile.exists()) {
+                ImageData imageData = ImageDataFactory.create(LOGO_PATH);
+                Image logo = new Image(imageData);
+                logo.setWidth(95).setHeight(35); // Largura maior, altura menor
+                cabecalhoTable.addCell(new Cell().add(logo).setBorder(Border.NO_BORDER));
+            } else {
+                cabecalhoTable.addCell(new Cell().setBorder(Border.NO_BORDER));
+            }
+        } catch (Exception e) {
+            cabecalhoTable.addCell(new Cell().setBorder(Border.NO_BORDER));
+        }
+        
+        // Título centralizado
+        Cell tituloCell = new Cell()
+                .add(new Paragraph("FICHA DO PACIENTE")
+                        .setFont(fonteTitulo).setFontSize(14).setTextAlignment(TextAlignment.CENTER)
+                        .setFontColor(ColorConstants.DARK_GRAY))
+                .setBorder(Border.NO_BORDER)
+                .setTextAlignment(TextAlignment.CENTER);
+        
+        cabecalhoTable.addCell(tituloCell);
+        
+        // Data
+        String dataAtual = FORMATO_DATA.format(new Date());
+        Cell dataCell = new Cell()
+                .add(new Paragraph("Data:")
+                        .setFont(fonteNormal).setFontSize(9))
+                .add(new Paragraph(dataAtual)
+                        .setFont(fonteTitulo).setFontSize(10))
+                .setBorder(Border.NO_BORDER)
+                .setTextAlignment(TextAlignment.RIGHT);
+        
+        cabecalhoTable.addCell(dataCell);
+        
+        document.add(cabecalhoTable);
+        document.add(new Paragraph(" ").setFontSize(3)); // Espaço mínimo
+    }
+    
+    /**
+     * Adiciona seção de dados pessoais (mais compacta)
+     */
+    private void adicionarDadosPessoais(Document document, Paciente paciente, PdfFont fonteTitulo, PdfFont fonteNormal) {
+        // Título da seção
+        Paragraph titulo = new Paragraph("DADOS PESSOAIS DO PACIENTE")
+                .setFont(fonteTitulo)
+                .setFontSize(10)
+                .setBackgroundColor(ColorConstants.LIGHT_GRAY)
+                .setPadding(3)
+                .setMarginBottom(2);
+        document.add(titulo);
+        
+        // Tabela de dados pessoais - 3 colunas para compactar mais
+        Table dadosTable = new Table(UnitValue.createPercentArray(new float[]{2, 1, 1}))
+                .useAllAvailableWidth();
+        
+        // Linha 1: Nome (2 cols), Data Nasc. (1 col)
+        dadosTable.addCell(new Cell(1, 2)
+                .add(new Paragraph()
+                        .add(new Text("Nome: ").setFont(fonteTitulo).setFontSize(9))
+                        .add(new Text(obterValorOuVazio(paciente.getNome())).setFont(fonteNormal).setFontSize(9)))
+                .setBorder(new SolidBorder(0.5f))
+                .setPadding(2)
+                .setMinHeight(15));
+        
+        dadosTable.addCell(new Cell()
+                .add(new Paragraph()
+                        .add(new Text("Nasc.: ").setFont(fonteTitulo).setFontSize(9))
+                        .add(new Text(obterValorOuVazio(paciente.getDataNascimento())).setFont(fonteNormal).setFontSize(9)))
+                .setBorder(new SolidBorder(0.5f))
+                .setPadding(2)
+                .setMinHeight(15));
+        
+        // Linha 2: Nome da Mãe (2 cols), Idade (1 col)
+        dadosTable.addCell(new Cell(1, 2)
+                .add(new Paragraph()
+                        .add(new Text("Mãe: ").setFont(fonteTitulo).setFontSize(9))
+                        .add(new Text(obterValorOuVazio(paciente.getNomeDaMae())).setFont(fonteNormal).setFontSize(8)))
+                .setBorder(new SolidBorder(0.5f))
+                .setPadding(2)
+                .setMinHeight(15));
+        
+        dadosTable.addCell(new Cell()
+                .add(new Paragraph()
+                        .add(new Text("Idade: ").setFont(fonteTitulo).setFontSize(9))
+                        .add(new Text(paciente.getIdade() != null ? paciente.getIdade() + " anos" : "").setFont(fonteNormal).setFontSize(9)))
+                .setBorder(new SolidBorder(0.5f))
+                .setPadding(2)
+                .setMinHeight(15));
+        
+        // Linha 3: CPF, SUS, Telefone
+        dadosTable.addCell(new Cell()
+                .add(new Paragraph()
+                        .add(new Text("CPF: ").setFont(fonteTitulo).setFontSize(9))
+                        .add(new Text(obterValorOuVazio(paciente.getCpf())).setFont(fonteNormal).setFontSize(8)))
+                .setBorder(new SolidBorder(0.5f))
+                .setPadding(2)
+                .setMinHeight(15));
+        
+        dadosTable.addCell(new Cell()
+                .add(new Paragraph()
+                        .add(new Text("SUS: ").setFont(fonteTitulo).setFontSize(9))
+                        .add(new Text(obterValorOuVazio(paciente.getSus())).setFont(fonteNormal).setFontSize(8)))
+                .setBorder(new SolidBorder(0.5f))
+                .setPadding(2)
+                .setMinHeight(15));
+        
+        dadosTable.addCell(new Cell()
+                .add(new Paragraph()
+                        .add(new Text("Tel.: ").setFont(fonteTitulo).setFontSize(9))
+                        .add(new Text(obterValorOuVazio(paciente.getTelefone())).setFont(fonteNormal).setFontSize(8)))
+                .setBorder(new SolidBorder(0.5f))
+                .setPadding(2)
+                .setMinHeight(15));
+        
+        // Linha 4: Endereço (3 cols)
+        dadosTable.addCell(new Cell(1, 3)
+                .add(new Paragraph()
+                        .add(new Text("Endereço: ").setFont(fonteTitulo).setFontSize(9))
+                        .add(new Text(obterValorOuVazio(paciente.getEndereco())).setFont(fonteNormal).setFontSize(8)))
+                .setBorder(new SolidBorder(0.5f))
+                .setPadding(2)
+                .setMinHeight(15));
+        
+        document.add(dadosTable);
+        document.add(new Paragraph(" ").setFontSize(2)); // Espaço mínimo
+    }
+    
+    /**
+     * Adiciona seção de atendimento/especialidades
+     */
+    private void adicionarAtendimentoEspecialidades(Document document, List<PacienteEspecialidade> especialidades,
+                                                   Map<Integer, String> numeracoes, PdfFont fonteTitulo, PdfFont fonteNormal) {
+        // Título da seção
+        Paragraph titulo = new Paragraph("ATENDIMENTO DE TRIAGEM/ESPECIALIDADE")
+                .setFont(fonteTitulo)
+                .setFontSize(10)
+                .setBackgroundColor(ColorConstants.LIGHT_GRAY)
+                .setPadding(3)
+                .setMarginBottom(2);
+        document.add(titulo);
+        
+        // Tabela de especialidades
+        Table especTable = new Table(UnitValue.createPercentArray(new float[]{3, 1}))
+                .useAllAvailableWidth();
+        
+        for (PacienteEspecialidade pe : especialidades) {
+            String nomeEspecialidade = obterNomeEspecialidade(pe.getEspecialidadeId());
+            if (nomeEspecialidade != null) {
+                // Nome da especialidade
+                especTable.addCell(new Cell()
+                        .add(new Paragraph(nomeEspecialidade).setFont(fonteNormal).setFontSize(9))
+                        .setBorder(new SolidBorder(0.5f))
+                        .setPadding(2)
+                        .setMinHeight(15));
+                
+                // Numeração
+                String numeracao = numeracoes.get(pe.getEspecialidadeId());
+                String textoNumeracao = "";
+                if (numeracao != null) {
+                    if (STATUS_ESGOTADO.equals(numeracao)) {
+                        textoNumeracao = "ESGOTADO";
+                    } else if ("ACOMPANHAMENTO".equals(numeracao)) {
+                        textoNumeracao = "ACOMP.";
+                    } else {
+                        textoNumeracao = "Nº " + numeracao;
+                    }
+                }
+                
+                especTable.addCell(new Cell()
+                        .add(new Paragraph(textoNumeracao).setFont(fonteTitulo).setFontSize(9))
+                        .setBorder(new SolidBorder(0.5f))
+                        .setPadding(2)
+                        .setMinHeight(15)
+                        .setTextAlignment(TextAlignment.CENTER));
+            }
+        }
+        
+        document.add(especTable);
+        document.add(new Paragraph(" ").setFontSize(2)); // Espaço mínimo
+    }
+    
+    /**
+     * Adiciona seção de parâmetros clínicos (mais compacta)
+     */
+    private void adicionarParametrosClinicos(Document document, Paciente paciente, 
+                                            PdfFont fonteTitulo, PdfFont fonteNormal) {
+        // Título da seção
+        Paragraph titulo = new Paragraph("PARÂMETROS CLÍNICOS")
+                .setFont(fonteTitulo)
+                .setFontSize(10)
+                .setBackgroundColor(ColorConstants.LIGHT_GRAY)
+                .setPadding(3)
+                .setMarginBottom(2);
+        document.add(titulo);
+
+        // Tabela de parâmetros - 4 colunas
+        Table paramTable = new Table(UnitValue.createPercentArray(new float[]{1, 1, 1, 1}))
+                .useAllAvailableWidth();
+
+        // Linha 1: Peso, Altura, SPO2, FC
+        paramTable.addCell(criarCelulParametro("Peso", 
+                paciente.getPeso() != null ? String.format("%.1f kg", paciente.getPeso()) : "", 
+                fonteTitulo, fonteNormal));
+
+        paramTable.addCell(criarCelulParametro("Altura", 
+                paciente.getAltura() != null ? String.format("%.2f m", paciente.getAltura()) : "", 
+                fonteTitulo, fonteNormal));
+
+        paramTable.addCell(criarCelulParametro("SPO2", 
+                paciente.getSpo2() != null ? String.format("%.1f%%", paciente.getSpo2()) : "", 
+                fonteTitulo, fonteNormal));
+
+        paramTable.addCell(criarCelulParametro("FC", 
+                paciente.getFcBpm() != null ? paciente.getFcBpm() + " bpm" : "", 
+                fonteTitulo, fonteNormal));
+
+        // Linha 2: PA, HGT, T, FR
+        paramTable.addCell(criarCelulParametro("PA", 
+                obterValorOuVazio(paciente.getPaXmmhg()), 
+                fonteTitulo, fonteNormal));
+
+        paramTable.addCell(criarCelulParametro("HGT", 
+                paciente.getHgtMgld() != null ? paciente.getHgtMgld() + " mg/dL" : "", 
+                fonteTitulo, fonteNormal));
+
+        paramTable.addCell(criarCelulParametro("T", 
+                paciente.getTemperaturaC() != null ? String.format("%.1f°C", paciente.getTemperaturaC()) : "", 
+                fonteTitulo, fonteNormal));
+
+        paramTable.addCell(criarCelulParametro("FR", 
+                paciente.getFrIbpm() != null ? paciente.getFrIbpm() + " rpm" : "", 
+                fonteTitulo, fonteNormal));
+
+        document.add(paramTable);
+        document.add(new Paragraph(" ").setFontSize(2)); // Espaço mínimo
+    }
+    
+    /**
+     * Cria célula para parâmetro clínico 
+     */
+    private Cell criarCelulParametro(String rotulo, String valor, PdfFont fonteTitulo, PdfFont fonteNormal) {
+        return new Cell()
+                .add(new Paragraph()
+                        .add(new Text(rotulo + ": ").setFont(fonteTitulo).setFontSize(8))
+                        .add(new Text(valor).setFont(fonteNormal).setFontSize(8)))
+                .setBorder(new SolidBorder(0.5f))
+                .setPadding(2)
+                .setMinHeight(18)
+                .setVerticalAlignment(VerticalAlignment.MIDDLE); // Centraliza verticalmente
+    }
+    
+    /**
+     * Adiciona seção de patologias (uma linha só)
+     */
+    private void adicionarPatologias(Document document, PdfFont fonteTitulo, PdfFont fonteNormal) {
+        // Título da seção
+        Paragraph titulo = new Paragraph("PATOLOGIAS")
+                .setFont(fonteTitulo)
+                .setFontSize(10)
+                .setBackgroundColor(ColorConstants.LIGHT_GRAY)
+                .setPadding(3)
+                .setMarginBottom(2);
+        document.add(titulo);
+
+        // Tabela de patologias - 6 colunas (uma linha só)
+        Table patolTable = new Table(UnitValue.createPercentArray(new float[]{1, 1, 1, 1, 1, 1}))
+                .useAllAvailableWidth();
+
+        // Lista de patologias - todas em uma linha
+        String[] patologias = {"HAS ( )", "DM ( )", "Alergia ( )", 
+                              "Asma ( )", "D. Virais ( )", "D. Resp. ( )"};
+
+        for (String patologia : patologias) {
+            patolTable.addCell(new Cell()
+                    .add(new Paragraph(patologia).setFont(fonteTitulo).setFontSize(8))
+                    .setBorder(new SolidBorder(0.5f))
+                    .setPadding(2)
+                    .setMinHeight(16)
+                    .setVerticalAlignment(VerticalAlignment.MIDDLE)); // Centraliza verticalmente
+        }
+
+        document.add(patolTable);
+        document.add(new Paragraph(" ").setFontSize(3)); // Espaço pequeno
+    }
+    
+    /**
+     * Adiciona seção de avaliação médica 
+     */
+    private void adicionarAvaliacaoMedica(Document document, PdfFont fonteTitulo, PdfFont fonteNormal) {
+        // Título da seção
+        Paragraph titulo = new Paragraph("AVALIAÇÃO MÉDICA")
+                .setFont(fonteTitulo)
+                .setFontSize(10)
+                .setBackgroundColor(ColorConstants.LIGHT_GRAY)
+                .setPadding(3)
+                .setMarginBottom(2);
+        document.add(titulo);
+
+        // Criar área com linhas para escrita manual - altura reduzida para caber na página
+        Table avaliacaoTable = new Table(1).useAllAvailableWidth();
+
+        // Criar célula com linhas horizontais para preenchimento manual
+        Cell avaliacaoCell = new Cell()
+                .setBorder(new SolidBorder(1f))
+                .setPadding(5)
+                .setMinHeight(370); // Altura de 350
+
+        // Reduzir número de linhas e espaçamento para caber na página
+        for (int i = 0; i < 22; i++) { // Reduzido de 25 para 15 linhas
+            Paragraph linha = new Paragraph("_".repeat(120)) // Linha de underscores
+                    .setFont(fonteNormal)
+                    .setFontSize(8)
+                    .setMarginBottom(6) // Espaçamento reduzido de 8 para 6
+                    .setFontColor(ColorConstants.LIGHT_GRAY);
+            avaliacaoCell.add(linha);
+        }
+
+        avaliacaoTable.addCell(avaliacaoCell);
+        document.add(avaliacaoTable);
+
+        // Rodapé compacto
+        document.add(new Paragraph(" ").setFontSize(2)); // Espaço reduzido
+        document.add(new Paragraph("Impresso em: " + FORMATO_DATA_HORA.format(new Date()))
+                .setFont(fonteNormal)
+                .setFontSize(7)
+                .setTextAlignment(TextAlignment.RIGHT)
+                .setFontColor(ColorConstants.GRAY));
+    }
+    
+    /**
+     * Abre o PDF automaticamente para visualização/impressão
+     */
+    private void abrirPDF(File arquivoPDF) {
+        try {
+            if (Desktop.isDesktopSupported()) {
+                Desktop desktop = Desktop.getDesktop();
+                if (desktop.isSupported(Desktop.Action.OPEN)) {
+                    desktop.open(arquivoPDF);
+                }
+            }
+        } catch (IOException ex) {
+            // Se não conseguir abrir automaticamente, mostrar mensagem com localização
+            JOptionPane.showMessageDialog(parent, 
+                    "PDF criado com sucesso!\nLocalização: " + arquivoPDF.getAbsolutePath(),
+                    "PDF Gerado", 
+                    JOptionPane.INFORMATION_MESSAGE);
         }
     }
     
@@ -317,53 +773,6 @@ public class Printer {
         }
         
         return new StatusAtendimento(numeracao, false);
-    }
-    
-    /**
-     * Executa a impressão física do documento para um grupo
-     */
-    private boolean executarImpressaoGrupo(Paciente paciente, GrupoImpressao grupo, Map<Integer, String> numeracoes) {
-        try {
-            String conteudoImpressao = criarDocumentoImpressao(paciente, grupo.getEspecialidades(), numeracoes);
-            
-            JTextArea areaImpressao = new JTextArea(conteudoImpressao);
-            areaImpressao.setFont(FONTE_IMPRESSAO);
-            areaImpressao.setMargin(MARGEM_IMPRESSAO);
-            
-            return areaImpressao.print();
-        } catch (PrinterException ex) {
-            throw new RuntimeException("Erro ao executar impressão: " + ex.getMessage(), ex);
-        }
-    }
-    
-    /**
-     * Cria o documento de impressão formatado
-     */
-    private String criarDocumentoImpressao(Paciente paciente, 
-                                          List<PacienteEspecialidade> especialidades,
-                                          Map<Integer, String> numeracoes) {
-        DocumentBuilder builder = new DocumentBuilder();
-        
-        builder.adicionarCabecalho()
-               .adicionarDadosPessoais(paciente)
-               .adicionarSinaisVitais(paciente)
-               .adicionarDadosAntropometricos(paciente)
-               .adicionarEspecialidades(especialidades, numeracoes, especialidadesCache)
-               .adicionarRodape();
-        
-        return builder.toString();
-    }
-    
-    /**
-     * Mostra o resumo da impressão
-     */
-    private void mostrarResumoImpressao(ResultadoImpressao resultado) {
-        ResumoImpressao resumo = new ResumoImpressao(resultado);
-        
-        JOptionPane.showMessageDialog(parent, 
-                resumo.gerarMensagem(), 
-                resumo.obterTitulo(), 
-                resumo.obterTipoMensagem());
     }
     
     /**
@@ -419,7 +828,7 @@ public class Printer {
                 return;
             }
 
-            boolean sucesso = executarImpressaoGrupo(paciente, grupo, numeracoes);
+            boolean sucesso = executarImpressaoPDF(paciente, grupo, numeracoes);
 
             if (sucesso) {
                 String mensagem = String.format("Ficha impressa com sucesso!\n%s", 
@@ -472,12 +881,28 @@ public class Printer {
         return str == null || str.trim().isEmpty();
     }
     
+    private String obterValorOuVazio(String valor) {
+        return valor != null && !valor.trim().isEmpty() ? valor : "";
+    }
+    
     private void mostrarAviso(String mensagem) {
         JOptionPane.showMessageDialog(parent, mensagem, TITULO_AVISO, JOptionPane.WARNING_MESSAGE);
     }
     
     private void mostrarErro(String mensagem) {
         JOptionPane.showMessageDialog(parent, mensagem, TITULO_ERRO, JOptionPane.ERROR_MESSAGE);
+    }
+    
+    /**
+     * Mostra o resumo da impressão
+     */
+    private void mostrarResumoImpressao(ResultadoImpressao resultado) {
+        ResumoImpressao resumo = new ResumoImpressao(resultado);
+        
+        JOptionPane.showMessageDialog(parent, 
+                resumo.gerarMensagem(), 
+                resumo.obterTitulo(), 
+                resumo.obterTipoMensagem());
     }
     
     // Classes internas para organização
@@ -631,175 +1056,6 @@ public class Printer {
             } else {
                 return JOptionPane.ERROR_MESSAGE;
             }
-        }
-    }
-    
-    /**
-     * Builder para construção do documento de impressão
-     */
-    private static class DocumentBuilder {
-        private final StringBuilder documento = new StringBuilder();
-        
-        public DocumentBuilder adicionarCabecalho() {
-            documento.append("===============================================\n");
-            documento.append("           FICHA DO PACIENTE\n");
-            documento.append("===============================================\n\n");
-            return this;
-        }
-        
-        public DocumentBuilder adicionarDadosPessoais(Paciente paciente) {
-            documento.append("DADOS PESSOAIS:\n");
-            documento.append("-----------------------------------------------\n");
-            
-            adicionarCampoSePresente("Nome", paciente.getNome());
-            adicionarCampoSePresente("Data de Nascimento", paciente.getDataNascimento());
-            if (paciente.getIdade() != null) {
-                documento.append("Idade: ").append(paciente.getIdade()).append(" anos\n");
-            }
-            adicionarCampoSePresente("Nome da Mãe", paciente.getNomeDaMae());
-            adicionarCampoSePresente("CPF", paciente.getCpf());
-            adicionarCampoSePresente("Cartão SUS", paciente.getSus());
-            adicionarCampoSePresente("Telefone", paciente.getTelefone());
-            adicionarCampoSePresente("Endereço", paciente.getEndereco());
-            
-            return this;
-        }
-        
-        public DocumentBuilder adicionarSinaisVitais(Paciente paciente) {
-            StringBuilder secao = new StringBuilder();
-            secao.append("\n\nSINAIS VITAIS:\n");
-            secao.append("-----------------------------------------------\n");
-            
-            boolean temDados = false;
-            
-            if (isPresente(paciente.getPaXmmhg())) {
-                secao.append("Pressão Arterial: ").append(paciente.getPaXmmhg()).append("\n");
-                temDados = true;
-            }
-            
-            if (paciente.getFcBpm() != null && paciente.getFcBpm() > 0) {
-                secao.append("Frequência Cardíaca: ").append(paciente.getFcBpm()).append(" bpm\n");
-                temDados = true;
-            }
-            
-            if (paciente.getFrIbpm() != null && paciente.getFrIbpm() > 0) {
-                secao.append("Frequência Respiratória: ").append(paciente.getFrIbpm()).append(" rpm\n");
-                temDados = true;
-            }
-            
-            if (paciente.getTemperaturaC() != null && paciente.getTemperaturaC() > 0) {
-                secao.append("Temperatura: ").append(String.format("%.1f", paciente.getTemperaturaC())).append(" °C\n");
-                temDados = true;
-            }
-            
-            if (paciente.getHgtMgld() != null && paciente.getHgtMgld() > 0) {
-                secao.append("Glicemia: ").append(paciente.getHgtMgld()).append(" mg/dL\n");
-                temDados = true;
-            }
-            
-            if (paciente.getSpo2() != null && paciente.getSpo2() > 0) {
-                secao.append("Saturação O2: ").append(String.format("%.1f", paciente.getSpo2())).append(" %\n");
-                temDados = true;
-            }
-            
-            if (temDados) {
-                documento.append(secao);
-            }
-            
-            return this;
-        }
-        
-        public DocumentBuilder adicionarDadosAntropometricos(Paciente paciente) {
-            StringBuilder secao = new StringBuilder();
-            secao.append("\n\nDADOS ANTROPOMÉTRICOS:\n");
-            secao.append("-----------------------------------------------\n");
-            
-            boolean temDados = false;
-            
-            if (paciente.getPeso() != null && paciente.getPeso() > 0) {
-                secao.append("Peso: ").append(String.format("%.2f", paciente.getPeso())).append(" kg\n");
-                temDados = true;
-            }
-            
-            if (paciente.getAltura() != null && paciente.getAltura() > 0) {
-                secao.append("Altura: ").append(String.format("%.2f", paciente.getAltura())).append(" m\n");
-                temDados = true;
-            }
-            
-            if (paciente.getImc() != null && paciente.getImc() > 0) {
-                secao.append("IMC: ").append(String.format("%.2f", paciente.getImc())).append(" kg/m²\n");
-                secao.append("Classificação IMC: ").append(obterClassificacaoIMC(paciente.getImc())).append("\n");
-                temDados = true;
-            }
-            
-            if (temDados) {
-                documento.append(secao);
-            }
-            
-            return this;
-        }
-        
-        public DocumentBuilder adicionarEspecialidades(List<PacienteEspecialidade> especialidades,
-                                                      Map<Integer, String> numeracoes,
-                                                      Map<Integer, String> cache) {
-            if (especialidades != null && !especialidades.isEmpty()) {
-                documento.append("\n\nESPECIALIDADES MÉDICAS:\n");
-                documento.append("-----------------------------------------------\n");
-                
-                for (PacienteEspecialidade pe : especialidades) {
-                    String nomeEspecialidade = cache.get(pe.getEspecialidadeId());
-                    if (nomeEspecialidade != null) {
-                        documento.append("• ").append(nomeEspecialidade);
-                        
-                        String numeracao = numeracoes.get(pe.getEspecialidadeId());
-                        if (numeracao != null) {
-                            if (STATUS_ESGOTADO.equals(numeracao)) {
-                                documento.append(" - ATENDIMENTOS ESGOTADOS");
-                            } else if ("ACOMPANHAMENTO".equals(numeracao)) {
-                                documento.append(" - ACOMPANHAMENTO");
-                            } else {
-                                documento.append(" - Atendimento Nº ").append(numeracao);
-                            }
-                        }
-                        documento.append("\n");
-                    }
-                }
-            }
-            return this;
-        }
-        
-        public DocumentBuilder adicionarRodape() {
-            documento.append("\n\n");
-            documento.append("===============================================\n");
-            documento.append("Data/Hora da impressão: ")
-                    .append(FORMATO_DATA.format(new Date())).append("\n");
-            documento.append("Sistema de Gestão de Pacientes\n");
-            documento.append("===============================================");
-            return this;
-        }
-        
-        private void adicionarCampoSePresente(String rotulo, String valor) {
-            if (isPresente(valor)) {
-                documento.append(rotulo).append(": ").append(valor).append("\n");
-            }
-        }
-        
-        private boolean isPresente(String valor) {
-            return valor != null && !valor.trim().isEmpty();
-        }
-        
-        private String obterClassificacaoIMC(float imc) {
-            if (imc < 18.5) return "Abaixo do peso";
-            if (imc < 25) return "Peso normal";
-            if (imc < 30) return "Sobrepeso";
-            if (imc < 35) return "Obesidade Grau I";
-            if (imc < 40) return "Obesidade Grau II";
-            return "Obesidade Grau III";
-        }
-        
-        @Override
-        public String toString() {
-            return documento.toString();
         }
     }
 }
