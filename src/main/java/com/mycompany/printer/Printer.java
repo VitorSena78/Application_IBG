@@ -703,10 +703,10 @@ public class Printer {
         Cell avaliacaoCell = new Cell()
                 .setBorder(new SolidBorder(1f))
                 .setPadding(5)
-                .setMinHeight(370); // Altura de 350
+                .setMinHeight(370); // Altura de 370
 
         // Reduzir número de linhas e espaçamento para caber na página
-        for (int i = 0; i < 22; i++) { // Reduzido de 25 para 15 linhas
+        for (int i = 0; i < 20; i++) { // Reduzido de 25 para 20 linhas
             Paragraph linha = new Paragraph("_".repeat(120)) // Linha de underscores
                     .setFont(fonteNormal)
                     .setFontSize(8)

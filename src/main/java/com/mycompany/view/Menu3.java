@@ -47,6 +47,13 @@ public class Menu3 extends javax.swing.JPanel {
             listener.onDadosSelected();
         }
     }
+    
+    // Notificar listeners quando Recarregar for clicado
+    private void notifyRecarregarClicked() {
+        for (MenuListener listener : listeners) {
+            listener.onRecarregarClicked();
+        }
+    }
 
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -56,6 +63,7 @@ public class Menu3 extends javax.swing.JPanel {
         jLabel1 = new javax.swing.JLabel();
         tabSaude = new javax.swing.JLabel();
         tabDados = new javax.swing.JLabel();
+        btnRecarregar = new javax.swing.JLabel();
 
         MainelMoving.setOpaque(false);
 
@@ -102,6 +110,36 @@ public class Menu3 extends javax.swing.JPanel {
             }
         });
 
+        // Configuração do botão Recarregar
+        btnRecarregar.setFont(new java.awt.Font("Liberation Sans", 1, 12));
+        btnRecarregar.setForeground(new java.awt.Color(255, 255, 255));
+        btnRecarregar.setText("Recarregar Dados");
+        btnRecarregar.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        btnRecarregar.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        btnRecarregar.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        btnRecarregar.setOpaque(false); 
+
+        // APENAS UM MouseListener - remover o MouseListener complexo anterior
+        btnRecarregar.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                btnRecarregarMouseClicked(evt);
+            }
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                btnRecarregar.setOpaque(true);
+                btnRecarregar.setBackground(new Color(255, 255, 255, 30));
+                btnRecarregar.repaint();
+            }
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                btnRecarregar.setOpaque(false);
+                btnRecarregar.repaint();
+            }
+        });
+
+        
+
         javax.swing.GroupLayout MainelMovingLayout = new javax.swing.GroupLayout(MainelMoving);
         MainelMoving.setLayout(MainelMovingLayout);
         MainelMovingLayout.setHorizontalGroup(
@@ -112,6 +150,10 @@ public class Menu3 extends javax.swing.JPanel {
                 .addContainerGap())
             .addComponent(tabSaude, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(tabDados, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addGroup(MainelMovingLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(btnRecarregar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap())
         );
         MainelMovingLayout.setVerticalGroup(
             MainelMovingLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -121,7 +163,9 @@ public class Menu3 extends javax.swing.JPanel {
                 .addComponent(tabSaude)
                 .addGap(5, 5, 5)
                 .addComponent(tabDados)
-                .addGap(0, 0, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(btnRecarregar)
+                .addGap(20, 20, 20))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
@@ -137,15 +181,13 @@ public class Menu3 extends javax.swing.JPanel {
                 .addGap(0, 483, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
-
+    
     // Eventos das abas
     private void tabSaudeMouseClicked(java.awt.event.MouseEvent evt) {
         if (selectedTab != 0) {
             selectedTab = 0;
             updateTabSelection();
             onTabChanged("Saúde");
-            
-            
         }
     }
 
@@ -187,6 +229,14 @@ public class Menu3 extends javax.swing.JPanel {
         }
     }
 
+    // Eventos do botão Recarregar
+    private void btnRecarregarMouseClicked(java.awt.event.MouseEvent evt) {
+        System.out.println("Botão Recarregar clicado - Iniciando recarregamento de dados...");
+        notifyRecarregarClicked();
+    }
+
+
+
     // Método para atualizar a aparência das abas
     private void updateTabSelection() {
         if (selectedTab == 0) {
@@ -214,13 +264,10 @@ public class Menu3 extends javax.swing.JPanel {
         System.out.println("Aba selecionada: " + tabName);
         
         if (tabName.equals("Saúde")){
-            //mainFrame.showPainelSaude();
             notifySaudeSelected();
         }else if(tabName.equals("Dados")){ 
-            //mainFrame.showPainelDados();
             notifyDadosSelected();
         }
-        
     }
 
     // Métodos públicos para controle das abas
@@ -251,7 +298,7 @@ public class Menu3 extends javax.swing.JPanel {
         super.paintChildren(grphcs); 
     }
 
-     private int x;
+    private int x;
     private int y;
 
     public void initMoving(JFrame fram) {
@@ -261,7 +308,6 @@ public class Menu3 extends javax.swing.JPanel {
                 x = me.getX();
                 y = me.getY();
             }
-
         });
         MainelMoving.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -276,6 +322,6 @@ public class Menu3 extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel tabSaude;
     private javax.swing.JLabel tabDados;
+    private javax.swing.JLabel btnRecarregar;
     // End of variables declaration//GEN-END:variables
-
 }

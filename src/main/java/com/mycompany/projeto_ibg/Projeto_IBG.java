@@ -1,5 +1,6 @@
 package com.mycompany.projeto_ibg;
 
+import com.mycompany.kafka.KafkaDebugger;
 import com.mycompany.kafka.PacienteConsumer;
 import com.mycompany.kafka.PacienteEspecialidadeConsumer;
 
@@ -10,6 +11,8 @@ public class Projeto_IBG {
     private static Thread pacienteConsumerThread;
     private static Thread pacienteEspecialidadeConsumerThread;
 
+    private KafkaDebugger kafkaDebugger = new KafkaDebugger();
+    
     public static void main(String[] args) {
         System.out.println("Iniciando aplicação IBG...");
         
@@ -62,6 +65,8 @@ public class Projeto_IBG {
         
         // Inicia os consumidores Kafka em threads separadas
         startKafkaConsumers();
+        
+        KafkaDebugger.testKafkaConnection();
         
         System.out.println("Aplicação IBG iniciada com sucesso!");
     }

@@ -24,11 +24,13 @@ import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JWindow;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 public class Main extends javax.swing.JFrame implements MenuListener, PacienteChangeListener, PacienteEspecialidadeChangeListener {
     
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(Main.class.getName());
+    private boolean recarregandoDados = false;
     PacienteDAO pacienteDAO;
     List<Paciente> pacientes;
     EspecialidadeDAO especialidadeDAO;
@@ -45,29 +47,17 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
 
     public Main() {
         initComponents();
-        
+
         // Registrar como listener do menu
         menu31.addMenuListener(this);
-        
-        //carega o pacienteDAO
-        pacienteDAO = new PacienteDAO();
-        //carega a Lista de pacientes
-        pacientes = pacienteDAO.listarTodos();
-        
-        //carega o especialidadeDAO
-        especialidadeDAO = new EspecialidadeDAO();
-        //carega a Lista de especialidades
-        especialidades = especialidadeDAO.listarTodas();
-        
-        //carega o pacienteEspecialidadeDAO
-        pacienteEspecialidadeDAO = new PacienteEspecialidadeDAO();
-        //carega a Lista de pacienteEspecialidades
-        pacienteEspecialidades = pacienteEspecialidadeDAO.listarTodos();
-        
+
+        // Carregar dados iniciais
+        carregarDados();
+
         // Registrar como listener de mudanças de pacientes e pacienteEspecialidade
         PacienteNotificationManager.getInstance().addListener(this);
         PacienteEspecialidadeNotificationManager.getInstance().addListener(this);
-        
+
         // Inicializa com o painel padrão
         onSaudeSelected(); 
     }
@@ -104,6 +94,49 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         painelSaudeAtivo = null;
         formularioSaudeAtivo = null;
     }
+    
+    /**
+     * Método para recarregar dados e atualizar painéis ativos
+     */
+    @Override
+    public void onRecarregarClicked() {
+        if (recarregandoDados) {
+            System.out.println("Recarregamento já em andamento...");
+            return;
+        }
+
+        recarregandoDados = true;
+        showNotification("Recarregando dados...");
+
+        // Executar recarregamento em thread separada para não bloquear a UI
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Recarregar todos os dados
+                carregarDados();
+
+                // Atualizar painéis ativos conforme a aba selecionada
+                int abaSelecionada = menu31.getSelectedTab();
+                if (abaSelecionada == 0) {
+                    // Aba Saúde ativa - recriar painéis de saúde
+                    onSaudeSelected();
+                } else {
+                    // Aba Dados ativa - recriar painéis de dados
+                    onDadosSelected();
+                }
+
+                showNotification("Dados recarregados com sucesso!");
+                System.out.println("Recarregamento de dados concluído com sucesso!");
+
+            } catch (Exception e) {
+                logger.severe("Erro durante recarregamento de dados: " + e.getMessage());
+                e.printStackTrace();
+                showNotification("Erro ao recarregar dados: " + e.getMessage());
+            } finally {
+                recarregandoDados = false;
+            }
+        });
+    }
+     
     
     // Implementação dos métodos PacienteEspecialidadeChangeListener
      @Override
@@ -236,6 +269,40 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         
         // Mostrar notificação (opcional)
         showNotification("Paciente removido. ID: " + pacienteId);
+    }
+    
+    /**
+     * Método para carregar/recarregar todos os dados do sistema
+     */
+    private void carregarDados() {
+        try {
+            System.out.println("Carregando dados do sistema...");
+
+            // Carregar o pacienteDAO
+            pacienteDAO = new PacienteDAO();
+            // Carregar a Lista de pacientes
+            pacientes = pacienteDAO.listarTodos();
+            System.out.println("Pacientes carregados: " + pacientes.size());
+
+            // Carregar o especialidadeDAO
+            especialidadeDAO = new EspecialidadeDAO();
+            // Carregar a Lista de especialidades
+            especialidades = especialidadeDAO.listarTodas();
+            System.out.println("Especialidades carregadas: " + especialidades.size());
+
+            // Carregar o pacienteEspecialidadeDAO
+            pacienteEspecialidadeDAO = new PacienteEspecialidadeDAO();
+            // Carregar a Lista de pacienteEspecialidades
+            pacienteEspecialidades = pacienteEspecialidadeDAO.listarTodos();
+            System.out.println("Associações paciente-especialidade carregadas: " + pacienteEspecialidades.size());
+
+            System.out.println("Dados carregados com sucesso!");
+
+        } catch (Exception e) {
+            logger.severe("Erro ao carregar dados: " + e.getMessage());
+            e.printStackTrace();
+            showNotification("Erro ao carregar dados: " + e.getMessage());
+        }
     }
     
     private void showNotification(String message) {
