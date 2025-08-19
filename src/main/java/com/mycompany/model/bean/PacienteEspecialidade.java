@@ -1,7 +1,5 @@
 package com.mycompany.model.bean;
 
-import java.util.Date;
-
 
 /**
  *
@@ -9,8 +7,8 @@ import java.util.Date;
  */
 public class PacienteEspecialidade {
     
-    private int pacienteId;
-    private int especialidadeId;
+    private Integer pacienteId;
+    private Integer especialidadeId;
     private String dataAtendimento;
 
     public PacienteEspecialidade() {
@@ -19,7 +17,7 @@ public class PacienteEspecialidade {
     
     // Getters e setters
 
-    public int getPacienteId() {
+    public Integer getPacienteId() {
         return pacienteId;
     }
 
@@ -27,7 +25,7 @@ public class PacienteEspecialidade {
         this.pacienteId = pacienteId;
     }
 
-    public int getEspecialidadeId() {
+    public Integer getEspecialidadeId() {
         return especialidadeId;
     }
 

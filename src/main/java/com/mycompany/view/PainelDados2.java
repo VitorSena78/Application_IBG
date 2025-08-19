@@ -19,22 +19,12 @@ import java.util.stream.Collectors;
 
 public class PainelDados2 extends javax.swing.JPanel {
     
-    private static final Color HEADER_COLOR = new Color(41, 98, 255);
-    private static final Color HEADER_TEXT_COLOR = Color.WHITE;
-    private static final Color ROW_COLOR_1 = new Color(248, 250, 252);
-    private static final Color ROW_COLOR_2 = Color.WHITE;
     private static final Color SELECTION_COLOR = new Color(59, 130, 246, 50);
     private static final Color BORDER_COLOR = new Color(226, 232, 240);
     private static final Color TEXT_COLOR = new Color(51, 65, 85);
-    private static final Color CRITICAL_COLOR = new Color(239, 68, 68);
-    private static final Color WARNING_COLOR = new Color(245, 158, 11);
-    private static final Color NORMAL_COLOR = new Color(34, 197, 94);
     
     // Cores para a barra de rolagem personalizada
     private static final Color SCROLLBAR_TRACK_COLOR = new Color(248, 250, 252);
-    private static final Color SCROLLBAR_THUMB_COLOR = new Color(203, 213, 225);
-    private static final Color SCROLLBAR_THUMB_HOVER_COLOR = new Color(148, 163, 184);
-    private static final Color SCROLLBAR_THUMB_PRESSED_COLOR = new Color(100, 116, 139);
     
     private PatientSelectionListener patientSelectionListener;
     
@@ -505,43 +495,7 @@ public class PainelDados2 extends javax.swing.JPanel {
         jScrollPane1.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
     }
     
-    //Metodo para adicionar exemplos de pacientes a tabela
-    private void populateWithSampleData() {
-    tableModel.setRowCount(0); // Limpar dados existentes
     
-    // Dados de exemplo com informações pessoais dos pacientes
-    Object[][] sampleData = {
-        {"Maria Silva Santos", "15/03/1985", "39", "Ana Santos Silva", "123.456.789-01", "700123456789889", "(11) 98765-4321", "Rua das Flores, 123 - Centro", "1"},
-        {"João Carlos Oliveira", "22/07/1990", "34", "Carmen Oliveira Lima", "234.567.890-12", "700234567890786", "(11) 97654-3210", "Av. Paulista, 456 - Bela Vista", "2"},
-        {"Ana Paula Costa", "08/12/1988", "36", "Rosa Costa Mendes", "345.678.901-23", "700345678901452", "(11) 96543-2109", "Rua Augusta, 789 - Consolação", "3"},
-        {"Carlos Eduardo Lima", "30/01/1975", "49", "Lucia Lima Ferreira", "456.789.012-34", "700456789012698", "(11) 95432-1098", "Rua Oscar Freire, 321 - Jardins", "4"},
-        {"Lucia Fernanda Alves", "14/09/1992", "32", "Maria Alves Rodrigues", "567.890.123-45", "700567890123785", "(11) 94321-0987", "Av. Faria Lima, 654 - Itaim Bibi", "5"},
-        {"Pedro Henrique Martins", "03/05/1980", "44", "Isabel Martins Souza", "678.901.234-56", "700678901234784", "(11) 93210-9876", "Rua Haddock Lobo, 987 - Cerqueira César", "6"},
-        {"Sofia Cristina Mendes", "27/11/1995", "29", "Beatriz Mendes Castro", "789.012.345-67", "700789012345698", "(11) 92109-8765", "Av. Rebouças, 147 - Pinheiros", "7"},
-        {"Roberto José Ferreira", "16/04/1978", "46", "Helena Ferreira Dias", "890.123.456-78", "700890123456125", "(11) 91098-7654", "Rua Teodoro Sampaio, 258 - Pinheiros", "8"},
-        {"Camila de Souza Rocha", "11/10/1983", "40", "Teresa Rocha Lima", "901.234.567-89", "700901234567893", "(11) 90987-6543", "Rua Bela Cintra, 321 - Consolação", "9"},
-        {"Marcelo Antunes Dias", "04/02/1986", "38", "Sônia Dias Antunes", "012.345.678-90", "700012345678994", "(11) 89876-5432", "Av. Angélica, 789 - Higienópolis", "10"},
-        {"Vanessa Regina Tavares", "19/06/1993", "31", "Regina Tavares Lopes", "123.987.654-32", "700123987654321", "(11) 88765-4321", "Rua Frei Caneca, 159 - Consolação", "11"},
-        {"Felipe Augusto Leal", "26/08/1979", "45", "Adriana Leal Mota", "234.876.543-21", "700234876543210", "(11) 87654-3210", "Rua Pamplona, 963 - Jardim Paulista", "12"},
-        {"Rafaela Gomes Monteiro", "09/01/1991", "33", "Luciana Gomes Monteiro", "345.765.432-10", "700345765432101", "(11) 86543-2109", "Rua Tabapuã, 332 - Itaim Bibi", "13"},
-        {"Eduardo Vinícius Prado", "17/05/1982", "42", "Silvana Prado Martins", "456.654.321-09", "700456654321098", "(11) 85432-1098", "Av. JK, 147 - Vila Olímpia", "14"},
-        {"Natália Andrade Ramos", "01/03/1989", "35", "Andreia Ramos Andrade", "567.543.210-98", "700567543210987", "(11) 84321-0987", "Rua João Cachoeira, 444 - Itaim", "15"},
-        {"Thiago Moreira Pinto", "23/12/1977", "47", "Sandra Pinto Moreira", "678.432.109-87", "700678432109876", "(11) 83210-9876", "Rua Funchal, 888 - Vila Olímpia", "16"},
-        {"Juliana Neves Carvalho", "06/06/1994", "30", "Helena Carvalho Silva", "789.321.654-98", "700789321654987", "(11) 82109-8765", "Rua do Rocio, 120 - Vila Olímpia", "17"},
-        {"Rodrigo Azevedo Maia", "12/09/1987", "37", "Marina Maia Azevedo", "890.432.165-79", "700890432165794", "(11) 81234-5678", "Rua Gomes de Carvalho, 500 - Brooklin", "18"},
-        {"Tatiane Lopes Vieira", "25/11/1981", "43", "Renata Vieira Lopes", "901.543.276-80", "700901543276801", "(11) 86789-1234", "Rua Sansão Alves dos Santos, 89 - Brooklin", "19"},
-        {"Fernando Souza Dias", "29/04/1976", "48", "Elaine Dias Souza", "012.654.387-91", "700012654387916", "(11) 81298-7654", "Av. Santo Amaro, 999 - Santo Amaro", "20"},
-        {"Aline Cristina Duarte", "31/01/1996", "28", "Juliana Duarte Castro", "123.765.498-02", "700123765498024", "(11) 81111-2222", "Rua das Orquídeas, 321 - Moema", "21"},
-        {"Bruno Henrique Vasconcelos", "18/03/1984", "40", "Fabiana Vasconcelos Lima", "234.876.509-13", "700234876509135", "(11) 82222-3333", "Av. Ibirapuera, 1500 - Moema", "22"},
-        {"Patrícia Figueiredo Costa", "10/07/1998", "26", "Sueli Costa Figueiredo", "345.987.610-24", "700345987610246", "(11) 83333-4444", "Rua Gaivota, 210 - Moema", "23"},
-        {"Leandro Batista Nunes", "07/02/1985", "39", "Tatiana Nunes Batista", "456.098.721-35", "700456098721357", "(11) 84444-5555", "Rua Canário, 88 - Moema", "24"}
-    };
-
-    
-    for (Object[] row : sampleData) {
-        tableModel.addRow(row);
-    }
-}
 
     private void setupColumnWidths() {
     int[] columnWidths = {150, 120, 80, 200, 120, 100, 120, 250, 60};

@@ -114,7 +114,7 @@ public class FormularioDados2PListaDeEspecialidades extends javax.swing.JPanel i
         this.pacienteDAO = pacienteDAO;
         
         // Inicializar o printer com as dependências necessárias
-        this.printer = new Printer(this, pacienteEspecialidadeDAO, especialidadeDAO, especialidades);
+        //this.printer = new Printer(this, pacienteEspecialidadeDAO, especialidadeDAO, especialidades);
         
         setupEvents();
         setOpaque(false); // Importante para o efeito de borda funcionar

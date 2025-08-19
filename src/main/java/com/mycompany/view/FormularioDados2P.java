@@ -1,13 +1,13 @@
 package com.mycompany.view;
 
-import com.mycompany.components.JCheckBoxCustom;
+
 import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
 import com.mycompany.model.bean.PacienteEspecialidade;
-import com.mycompany.model.dao.EspecialidadeDAO;
-import com.mycompany.model.dao.PacienteDAO;
-import com.mycompany.model.dao.PacienteEspecialidadeDAO;
 import com.mycompany.printer.Printer;
+import com.mycompany.service.EspecialidadeService;
+import com.mycompany.service.PacienteEspecialidadeService;
+import com.mycompany.service.PacienteService;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -24,31 +24,34 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.apache.kafka.common.errors.ApiException;
 
 public class FormularioDados2P extends javax.swing.JPanel implements PatientSelectionListener {
 
+    private static final Logger LOGGER = Logger.getLogger(FormularioDados2P.class.getName());
     private static final Color BORDER_COLOR = new Color(226, 232, 240);
-    
-    // Cor para a barra de rolagem personalizada
     private static final Color SCROLLBAR_TRACK_COLOR = new Color(248, 250, 252);
     
-    // Lista para armazenar os registros de pacientes
-    private List<Paciente> listaPacientes;
-    Paciente paciente = new Paciente();
-    private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
-    private PacienteDAO pacienteDAO;
+    // Services que substituem os DAOs
+    private PacienteService pacienteService;
+    private PacienteEspecialidadeService pacienteEspecialidadeService;
+    private EspecialidadeService especialidadeService;
     
-    //variaves especialidades selecionadas
+    // Dados
+    private List<Paciente> listaPacientes;
+    private Paciente paciente = new Paciente();
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
     private List<Especialidade> especialidades;
-    List<PacienteEspecialidade> pacienteEspecialidades;
-    private PacienteEspecialidadeDAO pacienteEspecialidadeDAO;
-  
+    private List<PacienteEspecialidade> pacienteEspecialidades;
+    
     // Controla se está em modo de edição
-    private boolean modoEdicao = false; 
+    private boolean modoEdicao = false;
     
     private Printer printer;
 
-    // NOVA IMPLEMENTAÇÃO COM JLIST
+    // Componentes para especialidades
     private JList<EspecialidadeCheckBox> listaEspecialidades;
     private DefaultListModel<EspecialidadeCheckBox> modeloLista;
     private JScrollPane scrollEspecialidades;
@@ -106,22 +109,26 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         }
     }
 
-    public FormularioDados2P(PacienteDAO pacienteDAO, PacienteEspecialidadeDAO pacienteEspecialidadeDAO, EspecialidadeDAO especialidadeDAO, List<Especialidade> especialidades) {
+    public FormularioDados2P(PacienteService pacienteService, 
+                            PacienteEspecialidadeService pacienteEspecialidadeService, 
+                            EspecialidadeService especialidadeService, 
+                            List<Especialidade> especialidades) {
+        
+        // CORREÇÃO: Inicializar services ANTES de initComponents
+        this.pacienteService = pacienteService;
+        this.pacienteEspecialidadeService = pacienteEspecialidadeService;
+        this.especialidadeService = especialidadeService;
+        this.especialidades = especialidades;
+        
         listaPacientes = new ArrayList<>();
         
-        //especialidades selecionadas - MOVER PARA ANTES do initComponents
-        this.especialidades = especialidades;
-        this.pacienteEspecialidadeDAO = pacienteEspecialidadeDAO;
-        
-        initComponents(); // Agora criarListaEspecialidades() é chamada dentro deste método
-        
-        this.pacienteDAO = pacienteDAO;
+        initComponents();
         
         // Inicializar o printer com as dependências necessárias
-        this.printer = new Printer(this, pacienteEspecialidadeDAO, especialidadeDAO, especialidades);
+        this.printer = new Printer(this, pacienteEspecialidadeService, especialidadeService, especialidades);
         
         setupEvents();
-        setOpaque(false); // Importante para o efeito de borda funcionar
+        setOpaque(false);
     }
 
     private void criarListaEspecialidades() {
@@ -791,18 +798,14 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
 
     // Método para salvar pacienteSalvo
     private void salvarPaciente() {
-        
         // Verifica se há um paciente selecionado
         if (paciente == null || paciente.getNome() == null || paciente.getNome().trim().isEmpty()) {
             JOptionPane.showMessageDialog(this, "Paciente não selecionado!",
                     "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        
+
         try {
-            Paciente pacienteSalvo = paciente;
-            
-            
             // Validação dos campos obrigatórios
             if (txtNome.getText().trim().isEmpty()) {
                 JOptionPane.showMessageDialog(this, "O campo Nome é obrigatório!",
@@ -817,16 +820,20 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                 txtCpf.requestFocus();
                 return;
             }
-            
-            // Preenchimento dos campos
+
+            // Criar cópia do paciente para atualização
+            Paciente pacienteSalvo = new Paciente();
+            pacienteSalvo.setId(paciente.getId()); // Manter o ID original
+
+            // Preenchimento dos campos obrigatórios
             pacienteSalvo.setNome(txtNome.getText().trim());
             pacienteSalvo.setCpf(txtCpf.getText().trim());
-            
+
             // Campos opcionais
             if (!txtDataNascimento.getText().isEmpty()) {
                 pacienteSalvo.setDataNascimento(txtDataNascimento.getText());
             }
-            
+
             if (!txtIdade.getText().isEmpty()) {
                 try {
                     pacienteSalvo.setIdade(Integer.parseInt(txtIdade.getText()));
@@ -836,102 +843,154 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                     return;
                 }
             }
-            
+
             if (!txtNomeDaMae.getText().trim().isEmpty()) {
                 pacienteSalvo.setNomeDaMae(txtNomeDaMae.getText().trim());
             }
-            
+
             if (!txtSus.getText().trim().isEmpty()) {
                 pacienteSalvo.setSus(txtSus.getText().trim());
             }
-            
+
             if (!txtTelefone.getText().trim().isEmpty()) {
                 pacienteSalvo.setTelefone(txtTelefone.getText().trim());
             }
-            
+
             if (!txtEndereco.getText().trim().isEmpty()) {
                 pacienteSalvo.setEndereco(txtEndereco.getText().trim());
             }
-            
-            // Salva/atualiza os dados do paciente
-            System.out.println("paciente Salvo Painel Dados: " + pacienteSalvo.toString());
-            boolean pacienteSalvoComSucesso = pacienteDAO.atualizar(pacienteSalvo);
 
-            if (!pacienteSalvoComSucesso) {
+            // CORREÇÃO: Salva/atualiza os dados do paciente via API
+            LOGGER.info("Salvando paciente via API: " + pacienteSalvo.toString());
+            boolean sucessoSalvamento = pacienteService.atualizar(pacienteSalvo);
+
+            if (!sucessoSalvamento) {
                 JOptionPane.showMessageDialog(this, "Erro ao salvar dados do paciente!",
                         "Erro", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-            
-            // Salva as especialidades selecionadas
+
+            // Salva as especialidades selecionadas via API
             List<Especialidade> especialidadesSelecionadas = getEspecialidadesSelecionadas();
             List<PacienteEspecialidade> listaPacienteEspecialidade = null;
-            if (!especialidadesSelecionadas.isEmpty()) {
 
+            if (!especialidadesSelecionadas.isEmpty()) {
                 // Cria a lista de PacienteEspecialidade
                 listaPacienteEspecialidade = listaPacienteEspecialidade(pacienteSalvo.getId(), especialidadesSelecionadas, null);
-                
-                // Insere todas as associações de uma vez
-                if (!listaPacienteEspecialidade.isEmpty()) {
-                    boolean especialidadesDeletadasComSucesso = pacienteEspecialidadeDAO.deletarPorPacienteId(pacienteSalvo.getId());
-                    boolean especialidadesSalvasComSucesso = pacienteEspecialidadeDAO.inserirLista(listaPacienteEspecialidade);
 
-                    if (!especialidadesSalvasComSucesso) {
+                // Remove associações antigas e insere as novas via API
+                if (!listaPacienteEspecialidade.isEmpty()) {
+                    try {
+                        // Primeiro, remove todas as associações existentes
+                        boolean especialidadesDeletadas = pacienteEspecialidadeService.deletarPorPacienteId(pacienteSalvo.getId());
+
+                        // Depois, insere as novas associações
+                        boolean especialidadesSalvas = pacienteEspecialidadeService.inserirLista(listaPacienteEspecialidade);
+
+                        if (!especialidadesSalvas) {
+                            JOptionPane.showMessageDialog(this, 
+                                "Paciente salvo, mas houve problemas ao salvar algumas especialidades.",
+                                "Aviso", JOptionPane.WARNING_MESSAGE);
+                        }
+
+                        if (!especialidadesDeletadas) {
+                            LOGGER.warning("Paciente salvo, mas houve problemas ao deletar as especialidades antigas.");
+                        }
+
+                    } catch (Exception e) {
+                        LOGGER.log(Level.WARNING, "Erro ao gerenciar especialidades", e);
                         JOptionPane.showMessageDialog(this, 
-                            "Paciente salvo, mas houve problemas ao Salvar algumas especialidades.",
+                            "Paciente salvo, mas houve problemas com as especialidades: " + e.getMessage(),
                             "Aviso", JOptionPane.WARNING_MESSAGE);
-                    }
-                    if(!especialidadesDeletadasComSucesso){
-                        System.out.println("Paciente salvo, mas houve problemas ao Deletar as especialidades.");
                     }
                 }
             } else {
-                System.out.println("Nenhuma especialidade selecionada para o paciente.");
+                LOGGER.info("Nenhuma especialidade selecionada para o paciente.");
+                // Remove todas as associações se nenhuma especialidade foi selecionada
+                try {
+                    pacienteEspecialidadeService.deletarPorPacienteId(pacienteSalvo.getId());
+                } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "Erro ao remover especialidades", e);
+                }
             }
-            
-           
-            
+
             JOptionPane.showMessageDialog(this,
-                    "Paciente cadastrado com sucesso!",
+                    "Paciente atualizado com sucesso!",
                     "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-            
-            //Preenche os campos
-            preencherCamposComDadosTabela(pacienteSalvo);
-            setEspecialidadesSelecionadas(listaPacienteEspecialidade);
-            
+
+            // CORREÇÃO: Buscar os dados atualizados da API para garantir consistência
+            Paciente pacienteAtualizado = pacienteService.buscarPorId(pacienteSalvo.getId());
+            if (pacienteAtualizado != null) {
+                // Atualiza a referência local e os campos
+                this.paciente = pacienteAtualizado;
+                this.pacienteEspecialidades = listaPacienteEspecialidade;
+                preencherCamposComDadosTabela(pacienteAtualizado);
+            }
+
             // Cancelar edição - voltar ao estado original
             modoEdicao = false;
-            aplicarBloqueioCondicional(); // Rebloquear campos preenchidos
-            aplicarBloqueioCondicionalEspecialidades(); // Rebloquear campos Especialidades preenchidos
+            aplicarBloqueioCondicional();
+            aplicarBloqueioCondicionalEspecialidades();
             btnEditar.setText("Editar");
-            btnEditar.setBackground(new Color(255, 152, 0)); // Cor laranja original
+            btnEditar.setBackground(new Color(255, 152, 0));
 
-
-        } catch (HeadlessException ex) {
-            JOptionPane.showMessageDialog(this, "Erro ao salvar paciente: " + ex.getMessage(),
-                    "Erro", JOptionPane.ERROR_MESSAGE);
         } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, "Erro inesperado ao salvar", ex);
             JOptionPane.showMessageDialog(this, "Erro inesperado ao salvar: " + ex.getMessage(),
                     "Erro", JOptionPane.ERROR_MESSAGE);
-            ex.printStackTrace();
         }
     }
+
     
     //Metodo para excluir paciente
-    private void excluirPaciente(){
-        
+     private void excluirPaciente() {
         // Verifica se há um paciente selecionado
         if (paciente == null || paciente.getId() == 0 || paciente.getNome().trim().isEmpty()) {
             JOptionPane.showMessageDialog(this, "Paciente não selecionado!",
                     "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
-        }else{
-            pacienteDAO.deletar(paciente.getId());
+        }
+        
+        // Confirmar exclusão
+        int confirmacao = JOptionPane.showConfirmDialog(this, 
+                "Tem certeza que deseja excluir o paciente: " + paciente.getNome() + "?",
+                "Confirmar Exclusão", 
+                JOptionPane.YES_NO_OPTION, 
+                JOptionPane.QUESTION_MESSAGE);
+        
+        if (confirmacao == JOptionPane.YES_OPTION) {
+            try {
+                LOGGER.info("Excluindo paciente ID: " + paciente.getId());
+                
+                boolean sucesso = pacienteService.deletar(paciente.getId());
+                
+                if (sucesso) {
+                    JOptionPane.showMessageDialog(this, "Paciente excluído com sucesso!",
+                            "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+                    limparCampos();
+                    this.paciente = new Paciente(); // Reset
+                    this.pacienteEspecialidades = null; // Reset
+                } else {
+                    JOptionPane.showMessageDialog(this, "Erro ao excluir paciente!",
+                            "Erro", JOptionPane.ERROR_MESSAGE);
+                }
+                
+            } catch (ApiException ex) {
+                LOGGER.log(Level.SEVERE, "Erro na API ao excluir paciente", ex);
+                JOptionPane.showMessageDialog(this, "Erro na comunicação com a API: " + ex.getMessage(),
+                        "Erro de API", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
     
     //Metodo para imprimir
     private void imprimirDadosPaciente() {
+        if (paciente == null || paciente.getId() == 0) {
+            JOptionPane.showMessageDialog(this, "Paciente não selecionado!",
+                    "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
         printer.imprimirDadosPaciente(paciente);
     }
 
@@ -946,55 +1005,15 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         txtTelefone.setText("");
         txtEndereco.setText("");
         limparEspecialidades();
+        
+        // Resetar estado dos campos
+        modoEdicao = false;
+        aplicarBloqueioCondicional();
+        aplicarBloqueioCondicionalEspecialidades();
+        btnEditar.setText("Editar");
+        btnEditar.setBackground(new Color(255, 152, 0));
     }
 
-    // Método para listar pacientes
-    private void listarPacientes() {
-        if (listaPacientes.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Nenhum paciente cadastrado.",
-                    "Lista Vazia", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-
-        StringBuilder lista = new StringBuilder("LISTA DE PACIENTES:\n\n");
-        for (int i = 0; i < listaPacientes.size(); i++) {
-            Paciente pac = listaPacientes.get(i);
-            lista.append("Paciente ").append(i + 1).append(":\n");
-            
-            lista.append("  Nome: ").append(pac.getNome()).append("\n");
-            if (pac.getDataNascimento() != null) {
-                lista.append("  Data Nascimento: ").append(dateFormat.format(pac.getDataNascimento())).append("\n");
-            }
-            if (pac.getIdade() != null) {
-                lista.append("  Idade: ").append(pac.getIdade()).append(" anos\n");
-            }
-            if (pac.getNomeDaMae() != null) {
-                lista.append("  Nome da Mãe: ").append(pac.getNomeDaMae()).append("\n");
-            }
-            lista.append("  CPF: ").append(pac.getCpf()).append("\n");
-            if (pac.getSus() != null) {
-                lista.append("  SUS: ").append(pac.getSus()).append("\n");
-            }
-            if (pac.getTelefone() != null) {
-                lista.append("  Telefone: ").append(pac.getTelefone()).append("\n");
-            }
-            if (pac.getEndereco() != null) {
-                lista.append("  Endereço: ").append(pac.getEndereco()).append("\n");
-            }
-            
-            lista.append("\n");
-        }
-
-        JTextArea textArea = new JTextArea(lista.toString());
-        textArea.setEditable(false);
-        textArea.setFont(new java.awt.Font("Monospaced", 0, 12));
-
-        JScrollPane scrollPane = new JScrollPane(textArea);
-        scrollPane.setPreferredSize(new java.awt.Dimension(600, 400));
-
-        JOptionPane.showMessageDialog(this, scrollPane, "Lista de Pacientes",
-                JOptionPane.INFORMATION_MESSAGE);
-    }
     
     // Método para atualizar a lista de especialidades (caso seja necessário recarregar do banco)
     public void atualizarEspecialidades(List<Especialidade> novasEspecialidades) {
@@ -1015,7 +1034,22 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     
     @Override
     public void onPatientSelected(Paciente patientData) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        // Implementação para compatibilidade - busca especialidades via API
+        paciente = patientData;
+        
+        if (patientData != null && patientData.getId() > 0) {
+            try {
+                // Busca especialidades do paciente via API
+                pacienteEspecialidades = pacienteEspecialidadeService.buscarPorPacienteId(patientData.getId());
+            } catch (ApiException e) {
+                LOGGER.log(Level.WARNING, "Erro ao buscar especialidades do paciente", e);
+                pacienteEspecialidades = new ArrayList<>();
+            }
+        } else {
+            pacienteEspecialidades = new ArrayList<>();
+        }
+        
+        preencherCamposComDadosTabela(patientData);
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

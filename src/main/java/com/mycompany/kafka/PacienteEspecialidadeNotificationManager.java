@@ -1,5 +1,6 @@
 package com.mycompany.kafka;
 
+import com.mycompany.listener.PacienteEspecialidadeChangeListener;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mycompany.model.bean.PacienteEspecialidade;

@@ -18,22 +18,26 @@ import com.itextpdf.layout.properties.*;
 import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
 import com.mycompany.model.bean.PacienteEspecialidade;
-import com.mycompany.model.dao.EspecialidadeDAO;
-import com.mycompany.model.dao.PacienteEspecialidadeDAO;
+import com.mycompany.service.PacienteEspecialidadeService;
+import com.mycompany.service.EspecialidadeService;
+
 
 import java.awt.Component;
 import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.swing.JOptionPane;
+import org.apache.kafka.common.errors.ApiException;
 
 /**
  * Classe responsável pela impressão de fichas de pacientes com iText PDF
  * Design profissional otimizado para uma página
+ * VERSÃO ATUALIZADA - USA SERVICES
  * 
  * @author vitor
  */
@@ -46,7 +50,7 @@ public class Printer {
     private static final String STATUS_ESGOTADO = "ESGOTADO";
     private static final String STATUS_CANCELADA = "CANCELADA";
     private static final String STATUS_ERRO = "ERRO";
-    private static final String LOGO_PATH = "/home/vitor/NetBeansProjects/projeto_IBG/src/main/resources/imagens/logo_cecom.png";
+    private static final String LOGO_PATH = "/imagens/logo_cecom.png";
     
     // Especialidades que não devem incluir Enfermagem
     private static final Set<String> ESPECIALIDADES_SEM_ENFERMAGEM = Set.of(
@@ -75,19 +79,19 @@ public class Printer {
         }
     }
     
-    // Campos da classe
+    // Campos da classe - ATUALIZADOS PARA USAR SERVICES
     private final Component parent;
-    private final PacienteEspecialidadeDAO pacienteEspecialidadeDAO;
-    private final EspecialidadeDAO especialidadeDAO;
+    private final PacienteEspecialidadeService pacienteEspecialidadeService;
+    private final EspecialidadeService especialidadeService;
     private final Map<Integer, String> especialidadesCache;
     private final Map<String, Integer> nomeParaIdCache;
 
-    // Construtor
-    public Printer(Component parent, PacienteEspecialidadeDAO pacienteEspecialidadeDAO, 
-                     EspecialidadeDAO especialidadeDAO, List<Especialidade> especialidades) {
+    // Construtor ATUALIZADO
+    public Printer(Component parent, PacienteEspecialidadeService pacienteEspecialidadeService, 
+                     EspecialidadeService especialidadeService, List<Especialidade> especialidades) {
         this.parent = parent;
-        this.pacienteEspecialidadeDAO = pacienteEspecialidadeDAO;
-        this.especialidadeDAO = especialidadeDAO;
+        this.pacienteEspecialidadeService = pacienteEspecialidadeService;
+        this.especialidadeService = especialidadeService;
         this.especialidadesCache = criarCacheEspecialidades(especialidades);
         this.nomeParaIdCache = criarCacheNomeParaId(especialidades);
     }
@@ -143,6 +147,8 @@ public class Printer {
 
             processarImpressaoGrupos(paciente, gruposImpressao);
 
+        } catch (ApiException ex) {
+            mostrarErro("Erro de comunicação com a API: " + ex.getMessage());
         } catch (Exception ex) {
             mostrarErro("Erro geral ao imprimir: " + ex.getMessage());
         }
@@ -214,14 +220,14 @@ public class Printer {
     }
     
     /**
-     * Busca as especialidades do paciente
+     * Busca as especialidades do paciente - USANDO SERVICE
      */
-    private List<PacienteEspecialidade> buscarEspecialidadesPaciente(Paciente paciente) {
-        if (paciente.getId() <= 0 || pacienteEspecialidadeDAO == null) {
+    private List<PacienteEspecialidade> buscarEspecialidadesPaciente(Paciente paciente) throws ApiException {
+        if (paciente.getId() <= 0 || pacienteEspecialidadeService == null) {
             return Collections.emptyList();
         }
         
-        List<PacienteEspecialidade> especialidades = pacienteEspecialidadeDAO.buscarPorPacienteId(paciente.getId());
+        List<PacienteEspecialidade> especialidades = pacienteEspecialidadeService.buscarPorPacienteId(paciente.getId());
         return especialidades != null ? especialidades : Collections.emptyList();
     }
     
@@ -251,7 +257,7 @@ public class Printer {
     }
     
     /**
-     * Processa a impressão de um grupo específico
+     * Processa a impressão de um grupo específico - USANDO SERVICES
      */
     private void processarImpressaoGrupo(Paciente paciente, GrupoImpressao grupo, ResultadoImpressao resultado) {
         try {
@@ -297,6 +303,10 @@ public class Printer {
                 resultado.adicionarResultado(nomeGrupo, "FALHA NA IMPRESSÃO", StatusImpressao.ERRO);
             }
             
+        } catch (ApiException ex) {
+            String nomeGrupo = grupo.obterNomeGrupo(especialidadesCache);
+            resultado.incrementarErro();
+            resultado.adicionarResultado(nomeGrupo, STATUS_ERRO + ": " + ex.getMessage(), StatusImpressao.ERRO);
         } catch (Exception ex) {
             String nomeGrupo = grupo.obterNomeGrupo(especialidadesCache);
             resultado.incrementarErro();
@@ -312,7 +322,6 @@ public class Printer {
             // Diretório onde os PDFs serão salvos
             File diretorio = new File(System.getProperty("user.home"), "Documents");
 
-            
             if (!diretorio.exists()) {
                 diretorio = new File(System.getProperty("user.home"), "Documentos");
             }
@@ -357,7 +366,6 @@ public class Printer {
         }
     }
 
-    
     /**
      * Cria o conteúdo completo do PDF
      */
@@ -393,16 +401,18 @@ public class Printer {
      */
     private void adicionarCabecalho(Document document, PdfFont fonteTitulo, PdfFont fonteNormal) throws IOException {
         Table cabecalhoTable = new Table(UnitValue.createPercentArray(new float[]{1, 3, 1}))
-                .useAllAvailableWidth();
+            .useAllAvailableWidth();
         
         // Logo 
         try {
-            File logoFile = new File(LOGO_PATH);
-            if (logoFile.exists()) {
-                ImageData imageData = ImageDataFactory.create(LOGO_PATH);
+            InputStream logoStream = getClass().getResourceAsStream(LOGO_PATH);
+            if (logoStream != null) {
+                byte[] logoBytes = logoStream.readAllBytes();
+                ImageData imageData = ImageDataFactory.create(logoBytes);
                 Image logo = new Image(imageData);
-                logo.setWidth(95).setHeight(35); // Largura maior, altura menor
+                logo.setWidth(95).setHeight(35);
                 cabecalhoTable.addCell(new Cell().add(logo).setBorder(Border.NO_BORDER));
+                logoStream.close();
             } else {
                 cabecalhoTable.addCell(new Cell().setBorder(Border.NO_BORDER));
             }
@@ -748,10 +758,10 @@ public class Printer {
     }
     
     /**
-     * Verifica o status de atendimento de uma especialidade
+     * Verifica o status de atendimento de uma especialidade - USANDO SERVICE
      */
-    private StatusAtendimento verificarStatusAtendimento(int especialidadeId, String nomeEspecialidade) {
-        boolean temAtendimentos = especialidadeDAO.temAtendimentosDisponiveis(especialidadeId);
+    private StatusAtendimento verificarStatusAtendimento(int especialidadeId, String nomeEspecialidade) throws ApiException {
+        boolean temAtendimentos = especialidadeService.temAtendimentosDisponiveis(especialidadeId);
         String numeracao = STATUS_ESGOTADO;
         
         if (!temAtendimentos) {
@@ -766,9 +776,9 @@ public class Printer {
                 return new StatusAtendimento(null, true);
             }
         } else {
-            numeracao = especialidadeDAO.obterNumeracaoProximoAtendimento(especialidadeId);
+            numeracao = especialidadeService.obterNumeracaoProximoAtendimento(especialidadeId);
             if (numeracao != null) {
-                especialidadeDAO.reduzirAtendimentoRestante(especialidadeId);
+                especialidadeService.reduzirAtendimentoRestante(especialidadeId);
             }
         }
         
@@ -776,7 +786,7 @@ public class Printer {
     }
     
     /**
-     * Método para imprimir uma especialidade específica
+     * Método para imprimir uma especialidade específica - USANDO SERVICES
      */
     public void imprimirDadosPacienteEspecialidade(Paciente paciente, int especialidadeId) {
         if (paciente == null || especialidadeId <= 0) {
@@ -836,13 +846,15 @@ public class Printer {
                 JOptionPane.showMessageDialog(parent, mensagem, "Impressão Realizada", JOptionPane.INFORMATION_MESSAGE);
             }
 
+        } catch (ApiException ex) {
+            mostrarErro("Erro de comunicação com a API: " + ex.getMessage());
         } catch (Exception ex) {
             mostrarErro("Erro ao imprimir: " + ex.getMessage());
         }
     }
     
     /**
-     * Verifica o status dos atendimentos de uma especialidade
+     * Verifica o status dos atendimentos de uma especialidade - USANDO SERVICE
      */
     public String verificarStatusAtendimentos(int especialidadeId) {
         if (especialidadeId <= 0) {
@@ -855,7 +867,7 @@ public class Printer {
                 return "Especialidade não encontrada";
             }
 
-            Especialidade especialidade = especialidadeDAO.buscarPorId(especialidadeId);
+            Especialidade especialidade = especialidadeService.buscarPorId(especialidadeId);
             if (especialidade == null) {
                 return "Erro ao buscar dados da especialidade";
             }
@@ -867,6 +879,8 @@ public class Printer {
                     especialidade.temAtendimentosDisponiveis() ? 
                         especialidade.formatarNumeracaoAtendimento() : STATUS_ESGOTADO);
 
+        } catch (ApiException ex) {
+            return "Erro de comunicação com a API: " + ex.getMessage();
         } catch (Exception ex) {
             return "Erro ao verificar status: " + ex.getMessage();
         }

@@ -1,15 +1,14 @@
 package com.mycompany.projeto_ibg;
 
-import com.mycompany.kafka.PacienteChangeListener;
-import com.mycompany.kafka.PacienteEspecialidadeChangeListener;
-import com.mycompany.kafka.PacienteEspecialidadeNotificationManager;
-import com.mycompany.kafka.PacienteNotificationManager;
+import com.mycompany.listener.PacienteChangeListener;
+import com.mycompany.listener.PacienteEspecialidadeChangeListener;
+import com.mycompany.manager.ApiManager;
 import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
 import com.mycompany.model.bean.PacienteEspecialidade;
-import com.mycompany.model.dao.EspecialidadeDAO;
-import com.mycompany.model.dao.PacienteDAO;
-import com.mycompany.model.dao.PacienteEspecialidadeDAO;
+import com.mycompany.service.EspecialidadeService;
+import com.mycompany.service.PacienteEspecialidadeService;
+import com.mycompany.service.PacienteService;
 import com.mycompany.view.FormularioSaude2P;
 import com.mycompany.view.FormularioDados2P;
 import com.mycompany.view.MenuListener;
@@ -20,9 +19,13 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Toolkit;
+import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JWindow;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -31,12 +34,22 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(Main.class.getName());
     private boolean recarregandoDados = false;
-    PacienteDAO pacienteDAO;
-    List<Paciente> pacientes;
-    EspecialidadeDAO especialidadeDAO;
-    List<Especialidade> especialidades;
-    PacienteEspecialidadeDAO pacienteEspecialidadeDAO;
-    List<PacienteEspecialidade> pacienteEspecialidades;
+    
+    // CONFIGURAÇÕES DA API
+    private String apiBaseUrl = "http://meuservidor.local/api"; // URL da sua API Spring Boot
+    private String webSocketUrl = "ws://meuservidor.local"; // URL do WebSocket
+    
+    private ApiManager apiManager;
+    
+    // Services que substituem os DAOs
+    private PacienteService pacienteService;
+    private EspecialidadeService especialidadeService;
+    private PacienteEspecialidadeService pacienteEspecialidadeService;
+    
+    // Listas de dados em memória (cache local)
+    List<Paciente> pacientes = new ArrayList<>();
+    List<Especialidade> especialidades = new ArrayList<>();
+    List<PacienteEspecialidade> pacienteEspecialidades = new ArrayList<>();
     
     // Referências para os painéis ativos
     private PainelSaude2 painelSaudeAtivo;
@@ -50,28 +63,30 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
 
         // Registrar como listener do menu
         menu31.addMenuListener(this);
+        
+        // Inicializa o gerenciador ApiManager COM AS URLs
+        inicializarApiManager();
 
-        // Carregar dados iniciais
+        // Carregar dados iniciais (só se API estiver disponível)
         carregarDados();
 
-        // Registrar como listener de mudanças de pacientes e pacienteEspecialidade
-        PacienteNotificationManager.getInstance().addListener(this);
-        PacienteEspecialidadeNotificationManager.getInstance().addListener(this);
-
+        // Registrar listeners para notificações em tempo real
+        registrarListeners();
+        
         // Inicializa com o painel padrão
         onSaudeSelected(); 
     }
     
     @Override
     public void onSaudeSelected() {
-        
+        // Usa os Services em vez de DAOs
         painelSaudeAtivo = new PainelSaude2(pacientes);
-        formularioSaudeAtivo = new FormularioSaude2P(pacienteDAO, pacienteEspecialidadeDAO, especialidadeDAO, especialidades);
+        formularioSaudeAtivo = new FormularioSaude2P(pacienteService, pacienteEspecialidadeService, especialidadeService, especialidades);
         
         refreshContentPainel(painelSaudeAtivo);
         refreshContentFormulario(formularioSaudeAtivo);
         
-        // Conectar os painéis painelSaude ao formularioSaude
+        // Conectar os painéis
         painelSaudeAtivo.setPatientSelectionListener(formularioSaudeAtivo);
         
         // Limpar referências dos outros painéis
@@ -81,13 +96,14 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
 
     @Override
     public void onDadosSelected() {
+        // Usa os Services em vez de DAOs
         painelDadosAtivo = new PainelDados2(pacientes, pacienteEspecialidades);
-        formularioDadosAtivo = new FormularioDados2P(pacienteDAO, pacienteEspecialidadeDAO, especialidadeDAO, especialidades);
+        formularioDadosAtivo = new FormularioDados2P(pacienteService, pacienteEspecialidadeService, especialidadeService, especialidades);
         
         refreshContentPainel(painelDadosAtivo);
         refreshContentFormulario(formularioDadosAtivo);
         
-        // Conectar os painéis painelDados ao formularioDados
+        // Conectar os painéis
         painelDadosAtivo.setPatientSelectionListener(formularioDadosAtivo);
        
         // Limpar referências dos outros painéis
@@ -108,71 +124,73 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         recarregandoDados = true;
         showNotification("Recarregando dados...");
 
-        // Executar recarregamento em thread separada para não bloquear a UI
+        // Executar recarregamento em thread separada
         SwingUtilities.invokeLater(() -> {
             try {
+                // Verificar se API está disponível
+                if (!apiManager.isApiDisponivel()) {
+                    showNotification("API não disponível para recarregamento");
+                    return;
+                }
+
                 // Recarregar todos os dados
                 carregarDados();
 
                 // Atualizar painéis ativos conforme a aba selecionada
                 int abaSelecionada = menu31.getSelectedTab();
                 if (abaSelecionada == 0) {
-                    // Aba Saúde ativa - recriar painéis de saúde
                     onSaudeSelected();
                 } else {
-                    // Aba Dados ativa - recriar painéis de dados
                     onDadosSelected();
                 }
 
-                showNotification("Dados recarregados com sucesso!");
+                showNotification("✅ Dados recarregados com sucesso!");
                 System.out.println("Recarregamento de dados concluído com sucesso!");
 
             } catch (Exception e) {
                 logger.severe("Erro durante recarregamento de dados: " + e.getMessage());
                 e.printStackTrace();
-                showNotification("Erro ao recarregar dados: " + e.getMessage());
+                showNotification("❌ Erro ao recarregar dados: " + e.getMessage());
             } finally {
                 recarregandoDados = false;
             }
         });
     }
      
+     
     
     // Implementação dos métodos PacienteEspecialidadeChangeListener
-     @Override
+    @Override
     public void onPacienteEspecialidadeAdded(PacienteEspecialidade pacienteEspecialidade) {
-        System.out.println("Nova associação paciente-especialidade adicionada: " + 
+        System.out.println("Nova associação paciente_has_especialidade adicionada: " + 
                       "Paciente ID: " + pacienteEspecialidade.getPacienteId() + 
                       ", Especialidade ID: " + pacienteEspecialidade.getEspecialidadeId());
 
         // Atualizar a lista local
         this.pacienteEspecialidades.add(pacienteEspecialidade);
 
-        // Atualizar apenas o painel de dados (que trabalha com especialidades)
+        // Atualizar apenas o painel de dados
         if (painelDadosAtivo != null) {
-            // Recarregar a lista completa para garantir consistência
-            //this.pacienteEspecialidades = pacienteEspecialidadeDAO.listarTodos();
             painelDadosAtivo.atualizarPacienteEspecialidade(this.pacienteEspecialidades);
         }
-
     }
 
     @Override
     public void onPacienteEspecialidadeUpdated(PacienteEspecialidade pacienteEspecialidade) {
-        System.out.println("Associação paciente-especialidade atualizada: " + 
+        System.out.println("Associação paciente_has_especialidade atualizada: " + 
                       "Paciente ID: " + pacienteEspecialidade.getPacienteId() + 
                       ", Especialidade ID: " + pacienteEspecialidade.getEspecialidadeId());
 
         // Atualizar na lista local
         for (int i = 0; i < this.pacienteEspecialidades.size(); i++) {
             PacienteEspecialidade pe = this.pacienteEspecialidades.get(i);
-            if (pe.getPacienteId() == pacienteEspecialidade.getPacienteId() && pe.getEspecialidadeId() == pacienteEspecialidade.getEspecialidadeId()) {
+            if (pe.getPacienteId() == pacienteEspecialidade.getPacienteId() && 
+                pe.getEspecialidadeId() == pacienteEspecialidade.getEspecialidadeId()) {
                 this.pacienteEspecialidades.set(i, pacienteEspecialidade);
                 break;
             }
         }
 
-        // Atualizar painéis ativos
         if (painelDadosAtivo != null) {
             painelDadosAtivo.atualizarPacienteEspecialidade(this.pacienteEspecialidades);
         }
@@ -180,20 +198,13 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
 
     @Override
     public void onPacienteEspecialidadeDeleted(Integer pacienteId, Integer especialidadeId) {
-        System.out.println("Associação paciente-especialidade removida: " + 
-                      "Paciente ID: " + pacienteId + 
-                      ", Especialidade ID: " + especialidadeId);
+        System.out.println("Associação paciente_has_especialidade removida: " + 
+                      "Paciente ID: " + pacienteId + ", Especialidade ID: " + especialidadeId);
     
         // Remover da lista local
         this.pacienteEspecialidades.removeIf(pe -> 
-            pe.getPacienteId()== pacienteId && 
-            pe.getEspecialidadeId()== especialidadeId
-        );
-        
-        System.out.println("pacienteEspecialidades removido: ");
-        System.out.println(pacienteEspecialidades);
+            pe.getPacienteId() == pacienteId && pe.getEspecialidadeId() == especialidadeId);
 
-        // Atualizar painéis ativos
         if (painelDadosAtivo != null) {
             painelDadosAtivo.atualizarPacienteEspecialidade(this.pacienteEspecialidades);
         }
@@ -202,73 +213,67 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     // Implementação dos métodos PacienteChangeListener
     @Override
     public void onPacienteAdded(Paciente paciente) {
-        System.out.println("Novo paciente adicionado: " + paciente.getNome());
-        System.out.println("onPacienteAdded: "+paciente.toString());
-        
-        // Atualizar a lista local
-        pacientes.add(paciente);
-        
-        // Atualizar painéis ativos
-        if (painelSaudeAtivo != null) {  
-            painelSaudeAtivo.adicionarPaciente(paciente);
-        }
-        if (painelDadosAtivo != null) {
-            painelDadosAtivo.adicionarPaciente(paciente);
-        }
-        
-        // Mostrar notificação (opcional)
-        showNotification("Novo paciente adicionado: " + paciente.getNome());
+        SwingUtilities.invokeLater(() -> {
+            System.out.println("Novo paciente adicionado: " + paciente.getNome());
+            
+            // Atualizar a lista local
+            pacientes.add(paciente);
+            
+            // Atualizar painéis ativos
+            if (painelSaudeAtivo != null) {  
+                painelSaudeAtivo.adicionarPaciente(paciente);
+            }
+            if (painelDadosAtivo != null) {
+                painelDadosAtivo.adicionarPaciente(paciente);
+            }
+            
+            showNotification("Novo paciente adicionado: " + paciente.getNome());
+        });
     }
 
     @Override
     public void onPacienteUpdated(Paciente paciente) {
-        System.out.println("Paciente atualizado: " + paciente.getNome());
-        System.out.println("onPacienteUpdated: "+paciente.toString());
-        
-        // Atualizar na lista local
-        for (int i = 0; i < pacientes.size(); i++) {
-            if (pacientes.get(i).getId() == paciente.getId()) {
-                pacientes.set(i, paciente);
-                break;
+        SwingUtilities.invokeLater(() -> {
+            System.out.println("Paciente atualizado: " + paciente.getNome());
+            
+            // Atualizar na lista local
+            for (int i = 0; i < pacientes.size(); i++) {
+                if (pacientes.get(i).getId().equals(paciente.getId())) {
+                    pacientes.set(i, paciente);
+                    break;
+                }
             }
-        }
-        
-        // Atualizar painéis ativos
-        if (painelSaudeAtivo != null) {
-            painelSaudeAtivo.atualizarPaciente(paciente);
-        }
-        if (painelDadosAtivo != null) {
-            painelDadosAtivo.atualizarPaciente(paciente);
-        }
-        
-        // Mostrar notificação (opcional)
-        showNotification("Paciente atualizado: " + paciente.getNome());    
+            
+            // Atualizar painéis ativos
+            if (painelSaudeAtivo != null) {
+                painelSaudeAtivo.atualizarPaciente(paciente);
+            }
+            if (painelDadosAtivo != null) {
+                painelDadosAtivo.atualizarPaciente(paciente);
+            }
+            
+            showNotification("Paciente atualizado: " + paciente.getNome());
+        });
     }
 
     @Override
     public void onPacienteDeleted(int pacienteId) {
-        System.out.println("Paciente removido. ID: " + pacienteId);
-        
-        //System.out.println("com.mycompany.projeto_ibg.Main.onPacienteDeleted() Antes: ");
-        //System.out.println(pacientes);
-        //System.out.println("Id a ser removido: " + pacienteId);
-        
-        // Remover da lista local
-        pacientes.removeIf(p -> p.getId() == pacienteId);
-        
-        //System.out.println("com.mycompany.projeto_ibg.Main.onPacienteDeleted() Depois: ");
-        //System.out.println(pacientes);
-        
-        // Atualizar painéis ativos
-        if (painelSaudeAtivo != null) {
-            painelSaudeAtivo.removerPaciente(pacienteId);
-        }
-        if (painelDadosAtivo != null) {
-            painelDadosAtivo.removerPaciente(pacienteId);
-        }
-        
-        // Mostrar notificação (opcional)
-        showNotification("Paciente removido. ID: " + pacienteId);
+        SwingUtilities.invokeLater(() -> {
+            System.out.println("Paciente removido. ID: " + pacienteId);
+            
+            // Remover da lista local
+            pacientes.removeIf(p -> p.getId().equals(pacienteId));
+            
+            // Atualizar painéis ativos
+            if (painelSaudeAtivo != null) {
+                painelSaudeAtivo.removerPaciente(pacienteId);
+            }
+            if (painelDadosAtivo != null) {
+                painelDadosAtivo.removerPaciente(pacienteId);
+            }
+            
+            showNotification("Paciente removido. ID: " + pacienteId);
+        });
     }
     
     /**
@@ -276,32 +281,35 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
      */
     private void carregarDados() {
         try {
-            System.out.println("Carregando dados do sistema...");
+            System.out.println("Carregando dados do sistema via API...");
 
-            // Carregar o pacienteDAO
-            pacienteDAO = new PacienteDAO();
-            // Carregar a Lista de pacientes
-            pacientes = pacienteDAO.listarTodos();
+            if (!apiManager.isApiDisponivel()) {
+                System.out.println("API não disponível - usando dados em cache");
+                showNotification("Modo offline - API não disponível");
+                return;
+            }
+
+            // Carregar dados via Services
+            pacientes = pacienteService.listarTodos();
             System.out.println("Pacientes carregados: " + pacientes.size());
 
-            // Carregar o especialidadeDAO
-            especialidadeDAO = new EspecialidadeDAO();
-            // Carregar a Lista de especialidades
-            especialidades = especialidadeDAO.listarTodas();
+            especialidades = especialidadeService.listarTodas();
             System.out.println("Especialidades carregadas: " + especialidades.size());
 
-            // Carregar o pacienteEspecialidadeDAO
-            pacienteEspecialidadeDAO = new PacienteEspecialidadeDAO();
-            // Carregar a Lista de pacienteEspecialidades
-            pacienteEspecialidades = pacienteEspecialidadeDAO.listarTodos();
-            System.out.println("Associações paciente-especialidade carregadas: " + pacienteEspecialidades.size());
+            pacienteEspecialidades = pacienteEspecialidadeService.listarTodos();
+            System.out.println("Associações paciente_has_especialidade carregadas: " + pacienteEspecialidades.size());
 
-            System.out.println("Dados carregados com sucesso!");
+            System.out.println("Todos os dados carregados com sucesso via API!");
 
         } catch (Exception e) {
             logger.severe("Erro ao carregar dados: " + e.getMessage());
             e.printStackTrace();
             showNotification("Erro ao carregar dados: " + e.getMessage());
+            
+            // Em caso de erro, inicializar com listas vazias se necessário
+            if (pacientes == null) pacientes = new ArrayList<>();
+            if (especialidades == null) especialidades = new ArrayList<>();
+            if (pacienteEspecialidades == null) pacienteEspecialidades = new ArrayList<>();
         }
     }
     
@@ -352,6 +360,137 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         content2.add(painel, BorderLayout.CENTER);
         content2.revalidate();
         content2.repaint();
+    }
+    
+    private void inicializarApiManager() {
+        try {
+            carregarConfiguracoes(); // Carregar configurações primeiro
+
+            System.out.println("Inicializando ApiManager...");
+            System.out.println("API URL: " + apiBaseUrl);
+            System.out.println("WebSocket URL: " + webSocketUrl);
+
+            apiManager = ApiManager.getInstance(apiBaseUrl, webSocketUrl);
+            apiManager.configurarShutdownHook();
+
+            if (apiManager.isApiDisponivel()) {
+                inicializarServices();
+                System.out.println("Sistema inicializado com sucesso!");
+            } else {
+                System.err.println("API não disponível - modo offline");
+                initializeOfflineMode();
+            }
+
+        } catch (Exception e) {
+            System.err.println("Erro crítico ao inicializar ApiManager: " + e.getMessage());
+            e.printStackTrace();
+            initializeOfflineMode();
+        }
+    }
+    
+    private void carregarConfiguracoes() {
+        Properties config = new Properties();
+        try {
+            // Tentar carregar arquivo config.properties
+            InputStream input = getClass().getClassLoader().getResourceAsStream("config.properties");
+            if (input != null) {
+                config.load(input);
+                apiBaseUrl = config.getProperty("api.base.url", "http://meuservidor.local/api");
+                webSocketUrl = config.getProperty("websocket.url", "ws://meuservidor.local");
+                System.out.println("Configurações carregadas do arquivo config.properties");
+            } else {
+                System.out.println("Arquivo config.properties não encontrado - usando configurações padrão");
+            }
+        } catch (Exception e) {
+            System.out.println("Erro ao carregar config.properties - usando configurações padrão: " + e.getMessage());
+        }
+    }
+    
+    private void inicializarServices() {
+        try {
+            pacienteService = apiManager.getPacienteService();
+            especialidadeService = apiManager.getEspecialidadeService();
+            pacienteEspecialidadeService = apiManager.getPacienteEspecialidadeService();
+
+            System.out.println("Services inicializados com sucesso!");
+            apiManager.executarDiagnostico();
+
+        } catch (Exception e) {
+            System.err.println("Erro ao inicializar services: " + e.getMessage());
+            throw e; // Re-lançar para tratamento no método pai
+        }
+    }
+    
+    /**
+     * Inicializa modo offline quando API não está disponível
+     */
+    private void initializeOfflineMode() {
+        System.out.println("🔄 Inicializando modo offline...");
+        
+        // Inicializar listas vazias
+        if (pacientes == null) pacientes = new ArrayList<>();
+        if (especialidades == null) especialidades = new ArrayList<>();
+        if (pacienteEspecialidades == null) pacienteEspecialidades = new ArrayList<>();
+        
+        // Mostrar aviso ao usuário
+        JOptionPane.showMessageDialog(this, 
+            "Modo Offline\n\n" +
+            "A API não está disponível no momento.\n" +
+            "Verifique se o servidor Spring Boot está rodando.\n\n" +
+            "Algumas funcionalidades podem não estar disponíveis.",
+            "Aviso de Conectividade", 
+            JOptionPane.WARNING_MESSAGE);
+    }
+    
+    private void registrarListeners() {
+        try {
+            if (apiManager != null) {
+                // Adiciona this como listener para mudanças
+                apiManager.addPacienteChangeListener(this);
+                apiManager.addPacienteEspecialidadeChangeListener(this);
+                
+                System.out.println("✅ Listeners registrados para notificações em tempo real!");
+            } else {
+                System.out.println("⚠️ ApiManager não disponível - listeners não registrados");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Erro ao registrar listeners: " + e.getMessage());
+        }
+    }
+    
+     /**
+     * Método para testar conectividade (pode ser chamado por um botão de diagnóstico)
+     */
+    public void testarConectividade() {
+        if (apiManager != null) {
+            apiManager.executarDiagnostico();
+            String status = apiManager.getStatusCompleto();
+            JOptionPane.showMessageDialog(this, status, "Status da Conectividade", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+    
+    /**
+     * Método para tentar reconectar
+     */
+    public void tentarReconexao() {
+        if (apiManager != null) {
+            showNotification("🔄 Tentando reconectar...");
+            apiManager.reconectar();
+            
+            if (apiManager.isApiDisponivel()) {
+                // Reconfigurar services
+                try {
+                    pacienteService = apiManager.getPacienteService();
+                    especialidadeService = apiManager.getEspecialidadeService();
+                    pacienteEspecialidadeService = apiManager.getPacienteEspecialidadeService();
+                    showNotification("Reconexão bem-sucedida!");
+                } catch (Exception e) {
+                    showNotification("Erro na reconexão: " + e.getMessage());
+                }
+            } else {
+                showNotification("Falha na reconexão");
+            }
+        }
     }
     
 

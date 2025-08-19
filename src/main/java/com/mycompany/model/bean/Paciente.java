@@ -6,7 +6,7 @@ package com.mycompany.model.bean;
  */
 public class Paciente {
     
-    private int id;                   // Identificador único do paciente
+    private Integer id;                   // Identificador único do paciente
     private String nome;              // Nome completo do paciente
     private String dataNascimento;    // Data de nascimento
     private Integer idade;            // Idade calculada a partir da data de nascimento
@@ -31,7 +31,7 @@ public class Paciente {
 
     // Getters e Setters
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 

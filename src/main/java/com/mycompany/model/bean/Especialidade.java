@@ -5,7 +5,7 @@ package com.mycompany.model.bean;
  * @author vitor
  */
 public class Especialidade {
-    private int id;
+    private Integer id;
     private String nome;
     private int atendimentosRestantesHoje;
     private int atendimentosTotaisHoje;
@@ -20,7 +20,7 @@ public class Especialidade {
   
     // Getters e Setters
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 

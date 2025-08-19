@@ -1,4 +1,4 @@
-package com.mycompany.kafka;
+package com.mycompany.listener;
 
 import com.mycompany.model.bean.Paciente;
 import com.mycompany.model.bean.PacienteEspecialidade;

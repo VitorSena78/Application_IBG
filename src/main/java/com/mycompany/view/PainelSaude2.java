@@ -12,22 +12,12 @@ import java.util.List;
 
 public class PainelSaude2 extends javax.swing.JPanel {
     
-    private static final Color HEADER_COLOR = new Color(41, 98, 255);
-    private static final Color HEADER_TEXT_COLOR = Color.WHITE;
-    private static final Color ROW_COLOR_1 = new Color(248, 250, 252);
-    private static final Color ROW_COLOR_2 = Color.WHITE;
     private static final Color SELECTION_COLOR = new Color(59, 130, 246, 50);
     private static final Color BORDER_COLOR = new Color(226, 232, 240);
     private static final Color TEXT_COLOR = new Color(51, 65, 85);
-    private static final Color CRITICAL_COLOR = new Color(239, 68, 68);
-    private static final Color WARNING_COLOR = new Color(245, 158, 11);
-    private static final Color NORMAL_COLOR = new Color(34, 197, 94);
     
     // Cores para a barra de rolagem personalizada
     private static final Color SCROLLBAR_TRACK_COLOR = new Color(248, 250, 252);
-    private static final Color SCROLLBAR_THUMB_COLOR = new Color(203, 213, 225);
-    private static final Color SCROLLBAR_THUMB_HOVER_COLOR = new Color(148, 163, 184);
-    private static final Color SCROLLBAR_THUMB_PRESSED_COLOR = new Color(100, 116, 139);
     
     private PatientSelectionListener patientSelectionListener;
     
@@ -198,44 +188,7 @@ public class PainelSaude2 extends javax.swing.JPanel {
         }
         return null;
     }
-    
-    //Metodo para adicionar exemplos de pacientes a tabela
-    private void populateWithSampleData() {
-        tableModel.setRowCount(0); // Limpar dados existentes
-        
-        // Dados de exemplo com diferentes estados de saúde (agora incluindo ID)
-        Object[][] sampleData = {
-            {"Maria Silva", "120/80", "72", "16", "36.5", "95", "98", "65.2", "1.65", "23.9", "1"},
-            {"João Santos", "140/90", "88", "18", "37.2", "180", "95", "78.5", "1.75", "25.6", "2"},
-            {"Ana Costa", "110/70", "65", "14", "36.8", "85", "99", "55.0", "1.60", "21.5", "3"},
-            {"Carlos Lima", "160/100", "95", "20", "38.1", "220", "92", "85.3", "1.80", "26.3", "4"},
-            {"Lucia Ferreira", "115/75", "70", "15", "36.3", "100", "97", "62.8", "1.68", "22.3", "5"},
-            {"Pedro Oliveira", "130/85", "80", "17", "36.9", "150", "96", "90.1", "1.85", "26.3", "6"},
-            {"Sofia Mendes", "105/65", "68", "13", "36.4", "78", "99", "48.5", "1.55", "20.2", "7"},
-            {"Roberto Alves", "145/95", "92", "19", "37.8", "195", "94", "95.7", "1.78", "30.2", "8"},
-            {"Fernanda Rocha", "118/76", "74", "16", "36.6", "102", "97", "60.4", "1.67", "21.6", "9"},
-            {"Bruno Martins", "135/85", "82", "17", "37.0", "160", "95", "83.2", "1.80", "25.7", "10"},
-            {"Juliana Souza", "125/80", "70", "15", "36.7", "110", "98", "58.9", "1.63", "22.1", "11"},
-            {"Ricardo Nunes", "150/95", "90", "19", "38.0", "200", "93", "88.6", "1.76", "28.6", "12"},
-            {"Patrícia Lima", "112/72", "66", "14", "36.2", "92", "99", "52.3", "1.58", "21.0", "13"},
-            {"Gustavo Ribeiro", "142/92", "89", "18", "37.5", "175", "96", "91.0", "1.82", "27.5", "14"},
-            {"Aline Barros", "108/68", "64", "13", "36.5", "80", "100", "49.7", "1.54", "20.9", "15"},
-            {"Diego Ferreira", "138/88", "85", "17", "37.1", "165", "94", "87.4", "1.79", "27.3", "16"},
-            {"Camila Teixeira", "122/78", "76", "16", "36.6", "105", "97", "61.0", "1.66", "22.1", "17"},
-            {"Marcelo Duarte", "148/98", "94", "20", "38.2", "210", "91", "92.3", "1.83", "27.6", "18"},
-            {"Vanessa Moraes", "113/70", "69", "14", "36.3", "89", "99", "53.8", "1.60", "21.0", "19"},
-            {"Felipe Castro", "132/86", "81", "17", "36.8", "145", "96", "84.5", "1.77", "27.0", "20"},
-            {"Rafaela Brito", "109/67", "66", "13", "36.4", "83", "100", "47.6", "1.52", "20.6", "21"},
-            {"Eduardo Lima", "144/93", "87", "18", "37.4", "185", "95", "89.2", "1.81", "27.2", "22"},
-            {"Natália Pires", "117/74", "71", "15", "36.5", "98", "98", "59.9", "1.64", "22.3", "23"},
-            {"Thiago Neves", "155/100", "97", "21", "38.3", "230", "90", "96.1", "1.84", "28.3", "24"}
-        };
 
-        
-        for (Object[] row : sampleData) {
-            tableModel.addRow(row);
-        }
-    }
     
     
     @SuppressWarnings("unchecked")
@@ -305,7 +258,6 @@ public class PainelSaude2 extends javax.swing.JPanel {
         tableModel.setRowCount(0); // Limpar tabela
 
         for (Paciente p : pacientes) {
-            String dataFormatada = "";
 
             if (p.getDataNascimento() != null && !p.getDataNascimento().isEmpty()) {
                 try {
@@ -321,7 +273,7 @@ public class PainelSaude2 extends javax.swing.JPanel {
                     }
 
                     // Formata a data no formato desejado
-                    dataFormatada = formatoDesejado.format(data);
+                    formatoDesejado.format(data);
                 } catch (java.text.ParseException e) {
                     e.printStackTrace();
                 }
@@ -507,7 +459,7 @@ public class PainelSaude2 extends javax.swing.JPanel {
                 // ID
                 Object idObj = tableModel.getValueAt(row, 10);
                 if (idObj != null && !idObj.toString().trim().isEmpty()) {
-                    paciente.setId(Integer.valueOf(idObj.toString()));
+                    paciente.setId(Integer.parseInt(idObj.toString()));
                 }
 
             } catch (NumberFormatException e) {

@@ -66,7 +66,7 @@ public class FormularioDados2PChekBoxAtuomatica extends javax.swing.JPanel imple
         criarCheckboxesEspecialidades();
         
         // Inicializar o printer com as dependências necessárias
-        this.printer = new Printer(this, pacienteEspecialidadeDAO, especialidadeDAO, especialidades);
+        //this.printer = new Printer(this, pacienteEspecialidadeDAO, especialidadeDAO, especialidades);
         
         setupEvents();
         setOpaque(false); // Importante para o efeito de borda funcionar

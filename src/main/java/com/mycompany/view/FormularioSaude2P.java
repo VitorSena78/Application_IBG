@@ -1,12 +1,13 @@
 package com.mycompany.view;
 
+
 import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
 import com.mycompany.model.bean.PacienteEspecialidade;
-import com.mycompany.model.dao.EspecialidadeDAO;
-import com.mycompany.model.dao.PacienteDAO;
-import com.mycompany.model.dao.PacienteEspecialidadeDAO;
 import com.mycompany.printer.Printer;
+import com.mycompany.service.EspecialidadeService;
+import com.mycompany.service.PacienteEspecialidadeService;
+import com.mycompany.service.PacienteService;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -18,33 +19,44 @@ import java.awt.event.KeyEvent;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.awt.Insets;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.apache.kafka.common.errors.ApiException;
 
 public class FormularioSaude2P extends javax.swing.JPanel implements PatientSelectionListener {
 
+    private static final Logger LOGGER = Logger.getLogger(FormularioSaude2P.class.getName());
+    
+    // Services
+    private PacienteService pacienteService;
+    private PacienteEspecialidadeService pacienteEspecialidadeService;
+    private EspecialidadeService especialidadeService;
+    
     // Lista para armazenar os registros de sinais vitais
     private List<Paciente> listaPacientes;
-    Paciente paciente = new Paciente();
+    private Paciente paciente = new Paciente();
     private DecimalFormat df = new DecimalFormat("#.##");
-    private PacienteDAO pacienteDAO;
     private Printer printer;
     
     // Controla se está em modo de edição
-    private boolean modoEdicao = false; 
+    private boolean modoEdicao = false;
 
-    public FormularioSaude2P(PacienteDAO pacienteDAO, PacienteEspecialidadeDAO pacienteEspecialidadeDAO, EspecialidadeDAO especialidadeDAO, List<Especialidade> especialidades) {
-    listaPacientes = new ArrayList<>();
-    initComponents();
-    this.pacienteDAO = pacienteDAO;
-    
-    // Inicializar o printer com as dependências necessárias
-    this.printer = new Printer(this, pacienteEspecialidadeDAO, especialidadeDAO,especialidades);
-    
-    setupEvents();
-    setOpaque(false);
-}
+    public FormularioSaude2P(PacienteService pacienteService, PacienteEspecialidadeService pacienteEspecialidadeService, EspecialidadeService especialidadeService, List<Especialidade> especialidades) {
+        
+        // CORREÇÃO: Inicializar services ANTES de initComponents
+        this.pacienteService = pacienteService;
+        this.pacienteEspecialidadeService = pacienteEspecialidadeService;
+        this.especialidadeService = especialidadeService;
+        
+        listaPacientes = new ArrayList<>();
+        initComponents();
+
+        // Inicializar o printer com as dependências necessárias
+        this.printer = new Printer(this, pacienteEspecialidadeService, especialidadeService, especialidades);
+
+        setupEvents();
+        setOpaque(false);
+    }
 
     @Override
     protected void paintComponent(Graphics grphcs) {
@@ -378,6 +390,7 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
 
         // IMC sempre permanece não editável
         txtImc.setEditable(false);
+        txtImc.setBackground(new Color(240, 240, 240));
     }
     
     private void adicionarListenersCamposVazios() {
@@ -507,88 +520,133 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
 
     // Método para salvar paciente
     private void salvarPaciente() {
-        
         // Verifica se há um paciente selecionado
         if (paciente == null || paciente.getNome() == null || paciente.getNome().trim().isEmpty()) {
             JOptionPane.showMessageDialog(this, "Paciente não selecionado!",
                     "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        
-        try {
-            Paciente pacienteSalvo = paciente;
 
-            // Converter campos não vazios
+        try {
+            // Atualizar campos de sinais vitais no paciente existente
+            // Converter campos de sinais vitais não vazios
             if (!txtPressaoArterial.getText().isEmpty()) {
-                pacienteSalvo.setPaXmmhg(txtPressaoArterial.getText().replace(",", "."));
+                paciente.setPaXmmhg(txtPressaoArterial.getText().replace(",", "."));
             }
             if (!txtFrequenciaCardiaca.getText().isEmpty()) {
-                pacienteSalvo.setFcBpm(Float.parseFloat(txtFrequenciaCardiaca.getText().replace(",", ".")));
+                paciente.setFcBpm(Float.parseFloat(txtFrequenciaCardiaca.getText().replace(",", ".")));
             }
             if (!txtFrequenciaRespiratoria.getText().isEmpty()) {
-                pacienteSalvo.setFrIbpm(Float.parseFloat(txtFrequenciaRespiratoria.getText().replace(",", ".")));
+                paciente.setFrIbpm(Float.parseFloat(txtFrequenciaRespiratoria.getText().replace(",", ".")));
             }
             if (!txtTemperatura.getText().isEmpty()) {
-                pacienteSalvo.setTemperaturaC(Float.parseFloat(txtTemperatura.getText().replace(",", ".")));
+                paciente.setTemperaturaC(Float.parseFloat(txtTemperatura.getText().replace(",", ".")));
             }
             if (!txtHemoglicoteste.getText().isEmpty()) {
-                pacienteSalvo.setHgtMgld(Float.parseFloat(txtHemoglicoteste.getText().replace(",", ".")));
+                paciente.setHgtMgld(Float.parseFloat(txtHemoglicoteste.getText().replace(",", ".")));
             }
             if (!txtSaturacaoOxigenio.getText().isEmpty()) {
-                pacienteSalvo.setSpo2(Float.parseFloat(txtSaturacaoOxigenio.getText().replace(",", ".")));
+                paciente.setSpo2(Float.parseFloat(txtSaturacaoOxigenio.getText().replace(",", ".")));
             }
             if (!txtPeso.getText().isEmpty()) {
-                pacienteSalvo.setPeso(Float.parseFloat(txtPeso.getText().replace(",", ".")));
+                paciente.setPeso(Float.parseFloat(txtPeso.getText().replace(",", ".")));
             }
             if (!txtAltura.getText().isEmpty()) {
-                pacienteSalvo.setAltura(Float.parseFloat(txtAltura.getText().replace(",", ".")));
+                paciente.setAltura(Float.parseFloat(txtAltura.getText().replace(",", ".")));
             }
             if (!txtImc.getText().isEmpty()) {
-                pacienteSalvo.setImc(Float.parseFloat(txtImc.getText().replace(",", ".")));
-                // Mostrar classificação do IMC quando salvar
-                String classificacao = getClassificacaoImc(pacienteSalvo.getImc());
+                paciente.setImc(Float.parseFloat(txtImc.getText().replace(",", ".")));
+            }
+
+            LOGGER.info("Atualizando sinais vitais do paciente via API: " + paciente.toString());
+
+            // Chamar o serviço de atualização (retorna boolean)
+            boolean sucesso = pacienteService.atualizar(paciente);
+
+            if (!sucesso) {
+                JOptionPane.showMessageDialog(this, "Erro ao salvar dados do paciente!",
+                        "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Mostrar classificação do IMC quando salvar (se houver)
+            if (!txtImc.getText().isEmpty()) {
+                String classificacao = getClassificacaoImc(paciente.getImc());
                 JOptionPane.showMessageDialog(this,
-                    "Registro salvo com sucesso!\n" +
-                    "IMC: " + df.format(pacienteSalvo.getImc()) + " - " + classificacao + "\n",
+                    "Sinais vitais salvos com sucesso!\n" +
+                    "IMC: " + df.format(paciente.getImc()) + " - " + classificacao,
                     "Sucesso", JOptionPane.INFORMATION_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(this, "Registro salvo com sucesso!\nTotal de registros: " + (listaPacientes.size() + 1),
+                JOptionPane.showMessageDialog(this, "Sinais vitais salvos com sucesso!",
                         "Sucesso", JOptionPane.INFORMATION_MESSAGE);
             }
-            
-            //System.out.println("paciente Salvo:" + pacienteSalvo.toString());
-            pacienteDAO.atualizar(pacienteSalvo);
-            
+
             // Cancelar edição - voltar ao estado original
             modoEdicao = false;
             aplicarBloqueioCondicional();
             btnEditar.setText("Editar");
             btnEditar.setBackground(new Color(255, 152, 0));
-            preencherCamposComDadosTabela(pacienteSalvo);
+            preencherCamposComDadosTabela(paciente);
 
         } catch (NumberFormatException ex) {
+            LOGGER.log(Level.WARNING, "Erro de formato nos dados", ex);
             JOptionPane.showMessageDialog(this, "Verifique se todos os valores numéricos estão corretos!",
                     "Erro de Formato", JOptionPane.ERROR_MESSAGE);
-            
-            System.out.println("Erro ao salvar os dados:" + ex);
+        } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, "Erro inesperado ao salvar", ex);
+            JOptionPane.showMessageDialog(this, "Erro inesperado ao salvar: " + ex.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
     
     //Metodo para excluir paciente
-    private void excluirPaciente(){
-        
+    private void excluirPaciente() {
         // Verifica se há um paciente selecionado
         if (paciente == null || paciente.getId() == 0 || paciente.getNome().trim().isEmpty()) {
             JOptionPane.showMessageDialog(this, "Paciente não selecionado!",
                     "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
-        }else{
-            pacienteDAO.deletar(paciente.getId());
+        }
+        
+        // Confirmar exclusão
+        int confirmacao = JOptionPane.showConfirmDialog(this, 
+                "Tem certeza que deseja excluir o paciente: " + paciente.getNome() + "?",
+                "Confirmar Exclusão", 
+                JOptionPane.YES_NO_OPTION, 
+                JOptionPane.QUESTION_MESSAGE);
+        
+        if (confirmacao == JOptionPane.YES_OPTION) {
+            try {
+                LOGGER.info("Excluindo paciente ID: " + paciente.getId());
+                
+                boolean sucesso = pacienteService.deletar(paciente.getId());
+                
+                if (sucesso) {
+                    JOptionPane.showMessageDialog(this, "Paciente excluído com sucesso!",
+                            "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+                    limparCampos();
+                    this.paciente = new Paciente(); // Reset
+                } else {
+                    JOptionPane.showMessageDialog(this, "Erro ao excluir paciente!",
+                            "Erro", JOptionPane.ERROR_MESSAGE);
+                }
+                
+            } catch (ApiException ex) {
+                LOGGER.log(Level.SEVERE, "Erro na API ao excluir paciente", ex);
+                JOptionPane.showMessageDialog(this, "Erro na comunicação com a API: " + ex.getMessage(),
+                        "Erro de API", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
     
     //Metodo para imprimir
     private void imprimirDadosPaciente() {
+        if (paciente == null || paciente.getId() == 0) {
+            JOptionPane.showMessageDialog(this, "Paciente não selecionado!",
+                    "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
         printer.imprimirDadosPaciente(paciente);
     }
 
@@ -603,48 +661,14 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
         txtPeso.setText("");
         txtAltura.setText("");
         txtImc.setText("");
-        //txtPressaoArterial.requestFocus();
+        
+        // Resetar estado dos campos
+        modoEdicao = false;
+        aplicarBloqueioCondicional();
+        btnEditar.setText("Editar");
+        btnEditar.setBackground(new Color(255, 152, 0));
     }
 
-    // Método para listar pacientes
-    private void listarPacientes() {
-        if (listaPacientes.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Nenhum registro de sinais vitais cadastrado.",
-                    "Lista Vazia", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-
-        StringBuilder lista = new StringBuilder("REGISTROS DE SINAIS VITAIS:\n\n");
-        for (int i = 0; i < listaPacientes.size(); i++) {
-            Paciente reg = listaPacientes.get(i);
-            lista.append("Registro ").append(i + 1).append(":\n");
-
-            if (reg.getPaXmmhg() != null) lista.append("  PA: ").append(reg.getPaXmmhg()).append(" mmHg\n");
-            if (reg.getFcBpm() != null) lista.append("  FC: ").append(reg.getFcBpm()).append(" bpm\n");
-            if (reg.getFrIbpm() != null) lista.append("  FR: ").append(reg.getFrIbpm()).append(" irpm\n");
-            if (reg.getTemperaturaC() != null) lista.append("  Temp: ").append(reg.getTemperaturaC()).append(" °C\n");
-            if (reg.getHgtMgld() != null) lista.append("  HGT: ").append(reg.getHgtMgld()).append(" mg/dL\n");
-            if (reg.getSpo2() != null) lista.append("  SpO₂: ").append(reg.getSpo2()).append(" %\n");
-            if (reg.getPeso() != null) lista.append("  Peso: ").append(reg.getPeso()).append(" kg\n");
-            if (reg.getAltura() != null) lista.append("  Altura: ").append(reg.getAltura()).append(" m\n");
-            if (reg.getImc() != null) {
-                lista.append("  IMC: ").append(reg.getImc()).append(" kg/m² (")
-                        .append(getClassificacaoImc(reg.getImc())).append(")\n");
-            }
-
-            lista.append("\n");
-        }
-
-        JTextArea textArea = new JTextArea(lista.toString());
-        textArea.setEditable(false);
-        textArea.setFont(new java.awt.Font("Monospaced", 0, 12));
-
-        JScrollPane scrollPane = new JScrollPane(textArea);
-        scrollPane.setPreferredSize(new java.awt.Dimension(520, 500));
-
-        JOptionPane.showMessageDialog(this, scrollPane, "Lista de Registros",
-                JOptionPane.INFORMATION_MESSAGE);
-    }
 
     @Override
     public void onPatientSelected(Paciente patientData) {
@@ -654,7 +678,9 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
     
     @Override
     public void onPatientSelected(Paciente patientData, List<PacienteEspecialidade> pacienteEspecialidadeData) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        // Para o formulário de saúde, ignoramos as especialidades
+        paciente = patientData;
+        preencherCamposComDadosTabela(patientData);
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

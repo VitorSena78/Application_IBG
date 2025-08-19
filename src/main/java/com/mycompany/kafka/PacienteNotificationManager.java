@@ -1,9 +1,9 @@
 package com.mycompany.kafka;
 
+import com.mycompany.listener.PacienteChangeListener;
 import com.mycompany.model.bean.Paciente;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.mycompany.model.bean.PacienteEspecialidade;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
