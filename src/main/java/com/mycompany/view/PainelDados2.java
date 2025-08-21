@@ -110,12 +110,38 @@ public class PainelDados2 extends javax.swing.JPanel {
     
     // Método público para adicionar novos pacientes
     private void loadPacientes() {
+        System.out.println("=== DEBUG loadPacientes PainelDados2 ===");
+        System.out.println("Pacientes recebidos: " + (pacientes != null ? pacientes.size() : "NULL"));
+
+        if (pacientes == null) {
+            System.err.println("A lista de pacientes está nula. Nenhum dado será adicionado.");
+            return;
+        }
+
+        if (pacientes.isEmpty()) {
+            System.err.println("A lista de pacientes está vazia. Nenhum dado será adicionado.");
+            return;
+        }
+
+        // Limpar tabela apenas uma vez no início
+        tableModel.setRowCount(0);
+        System.out.println("Tabela limpa. Adicionando " + pacientes.size() + " pacientes...");
+
         java.text.SimpleDateFormat formatoDesejado = new java.text.SimpleDateFormat("dd/MM/yyyy");
         java.text.SimpleDateFormat formatoISO = new java.text.SimpleDateFormat("yyyy-MM-dd");
 
-        for (Paciente p : pacientes) {
-            String dataFormatada = "";
+        for (int i = 0; i < pacientes.size(); i++) {
+            Paciente p = pacientes.get(i);
+            System.out.println("Processando paciente " + (i+1) + ": " + 
+                              (p != null ? p.getNome() : "NULL") + " (ID: " + 
+                              (p != null ? p.getId() : "NULL") + ")");
 
+            if (p == null) {
+                System.err.println("Paciente " + i + " é NULL - pulando");
+                continue;
+            }
+
+            String dataFormatada = "";
             if (p.getDataNascimento() != null && !p.getDataNascimento().isEmpty()) {
                 try {
                     java.util.Date data;
@@ -133,30 +159,74 @@ public class PainelDados2 extends javax.swing.JPanel {
                     dataFormatada = formatoDesejado.format(data);
 
                 } catch (java.text.ParseException e) {
-                    e.printStackTrace();
-                    // Pode logar ou mostrar alerta, se desejar
-                    // Exemplo: JOptionPane.showMessageDialog(null, "Data inválida: " + p.getDataNascimento());
+                    System.err.println("Erro ao formatar data para paciente " + p.getNome() + ": " + e.getMessage());
+                    dataFormatada = p.getDataNascimento(); // Usar valor original se falhar
                 }
             }
 
-            tableModel.addRow(new Object[]{
-                p.getNome(),
+            Object[] row = {
+                p.getNome() != null ? p.getNome() : "",
                 dataFormatada,
                 p.getIdade() != null ? p.getIdade().toString() : "",
-                p.getNomeDaMae(),
-                p.getCpf(),
-                p.getSus(),
-                p.getTelefone(),
-                p.getEndereco(),
-                String.valueOf(p.getId())
-            });
+                p.getNomeDaMae() != null ? p.getNomeDaMae() : "",
+                p.getCpf() != null ? p.getCpf() : "",
+                p.getSus() != null ? p.getSus() : "",
+                p.getTelefone() != null ? p.getTelefone() : "",
+                p.getEndereco() != null ? p.getEndereco() : "",
+                p.getId() != null ? String.valueOf(p.getId()) : ""
+            };
+
+            tableModel.addRow(row);
+            System.out.println("Linha adicionada para: " + p.getNome());
         }
+
+        // Forçar atualização visual
+        tableModel.fireTableDataChanged();
+        jTable1.revalidate();
+        jTable1.repaint();
+
+        System.out.println("Total de linhas na tabela: " + tableModel.getRowCount());
+        System.out.println("=== FIM loadPacientes PainelDados2 ===");
+    }
+    
+    public void debugEstadoTabela() {
+        System.out.println("=== DEBUG ESTADO DA TABELA (PainelDados2) ===");
+        System.out.println("TableModel existe: " + (tableModel != null));
+        System.out.println("JTable existe: " + (jTable1 != null));
+        System.out.println("Lista pacientes: " + (pacientes != null ? pacientes.size() : "NULL"));
+
+        if (tableModel != null) {
+            System.out.println("Linhas na tabela: " + tableModel.getRowCount());
+            System.out.println("Colunas na tabela: " + tableModel.getColumnCount());
+
+            // Mostrar algumas linhas se existirem
+            for (int i = 0; i < Math.min(3, tableModel.getRowCount()); i++) {
+                Object nome = tableModel.getValueAt(i, 0);
+                Object id = tableModel.getValueAt(i, 8);
+                System.out.println("Linha " + i + ": " + nome + " (ID: " + id + ")");
+            }
+        }
+
+        if (jTable1 != null) {
+            System.out.println("Tabela visível: " + jTable1.isVisible());
+            System.out.println("Scroll pane visível: " + jScrollPane1.isVisible());
+            System.out.println("Tamanho da tabela: " + jTable1.getSize());
+        }
+        System.out.println("=== FIM DEBUG ===");
     }
     
     // Método para recarregar todos os dados (fallback)
-    public void reloadData(List<Paciente> pacientes) {
-        this.pacientes = pacientes;
-        loadPacientes();
+    public void reloadData(List<Paciente> novosPacientes) {
+        System.out.println("=== reloadData chamado PainelDados2 ===");
+        System.out.println("Novos pacientes: " + (novosPacientes != null ? novosPacientes.size() : "NULL"));
+
+        // Atualizar referência da lista
+        this.pacientes = novosPacientes;
+
+        // Recarregar dados na tabela
+        SwingUtilities.invokeLater(() -> {
+            loadPacientes();
+        });
     }
     
     // Método público para limpar todos os dados
@@ -498,16 +568,16 @@ public class PainelDados2 extends javax.swing.JPanel {
     
 
     private void setupColumnWidths() {
-    int[] columnWidths = {150, 120, 80, 200, 120, 100, 120, 250, 60};
-    String[] columnNames = {
-        "Nome do Paciente", "Data de Nascimento", "Idade", "Nome da Mãe", 
-        "CPF", "SUS", "Telefone", "Endereço", "ID"
-    };
-    
-    for (int i = 0; i < columnWidths.length && i < jTable1.getColumnCount(); i++) {
-        TableColumn column = jTable1.getColumnModel().getColumn(i);
-        column.setPreferredWidth(columnWidths[i]);
-        column.setHeaderValue(columnNames[i]);
+        int[] columnWidths = {150, 120, 80, 200, 120, 100, 120, 250, 60};
+        String[] columnNames = {
+            "Nome do Paciente", "Data de Nascimento", "Idade", "Nome da Mãe", 
+            "CPF", "SUS", "Telefone", "Endereço", "ID"
+        };
+
+        for (int i = 0; i < columnWidths.length && i < jTable1.getColumnCount(); i++) {
+            TableColumn column = jTable1.getColumnModel().getColumn(i);
+            column.setPreferredWidth(columnWidths[i]);
+            column.setHeaderValue(columnNames[i]);
+        }
     }
-}
 }

@@ -1,6 +1,7 @@
 package com.mycompany.view;
 
 
+import com.mycompany.listener.PatientUpdateListener;
 import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
 import com.mycompany.model.bean.PacienteEspecialidade;
@@ -40,6 +41,8 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
     
     // Controla se está em modo de edição
     private boolean modoEdicao = false;
+    
+    private PatientUpdateListener patientUpdateListener;
 
     public FormularioSaude2P(PacienteService pacienteService, PacienteEspecialidadeService pacienteEspecialidadeService, EspecialidadeService especialidadeService, List<Especialidade> especialidades) {
         
@@ -56,6 +59,10 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
 
         setupEvents();
         setOpaque(false);
+    }
+    
+    public void setPatientUpdateListener(PatientUpdateListener listener) {
+        this.patientUpdateListener = listener;
     }
 
     @Override
@@ -356,7 +363,7 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
         //System.out.println("preencherCamposComDadosTabela: " + patientData.toString());
         if (patientData != null) {
             // Preencher os campos com os dados da tabela
-            txtPressaoArterial.setText(patientData.getPaXmmhg() != null ? patientData.getPaXmmhg() : "");
+            txtPressaoArterial.setText(patientData.getPaXMmhg() != null ? patientData.getPaXMmhg() : "");
             txtFrequenciaCardiaca.setText(patientData.getFcBpm() != null ? patientData.getFcBpm().toString() : "");
             txtFrequenciaRespiratoria.setText(patientData.getFrIbpm() != null ? patientData.getFrIbpm().toString() : "");
             txtTemperatura.setText(patientData.getTemperaturaC() != null ? patientData.getTemperaturaC().toString() : "");
@@ -412,6 +419,14 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
                 }
             });
         }
+    }
+    
+    public void atualizarEspecialidades(List<Especialidade> especialidades) {
+        if (printer != null) {
+            // Atualizar o printer 
+            this.printer = new Printer(this, pacienteEspecialidadeService, especialidadeService, especialidades);
+        }
+        LOGGER.info("Especialidades atualizadas no FormularioSaude2P: " + especialidades.size());
     }
     
     // Método para configurar eventos
@@ -518,7 +533,7 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
         else return "Obesidade grau III";
     }
 
-    // Método para salvar paciente
+    // Método para salvar paciente FormularioSaude2P
     private void salvarPaciente() {
         // Verifica se há um paciente selecionado
         if (paciente == null || paciente.getNome() == null || paciente.getNome().trim().isEmpty()) {
@@ -531,7 +546,7 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
             // Atualizar campos de sinais vitais no paciente existente
             // Converter campos de sinais vitais não vazios
             if (!txtPressaoArterial.getText().isEmpty()) {
-                paciente.setPaXmmhg(txtPressaoArterial.getText().replace(",", "."));
+                paciente.setPaXMmhg(txtPressaoArterial.getText().replace(",", "."));
             }
             if (!txtFrequenciaCardiaca.getText().isEmpty()) {
                 paciente.setFcBpm(Float.parseFloat(txtFrequenciaCardiaca.getText().replace(",", ".")));
@@ -569,6 +584,21 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
                 return;
             }
 
+            // NOVA PARTE: Buscar dados atualizados da API para garantir consistência
+            Paciente pacienteAtualizado = pacienteService.buscarPorId(paciente.getId());
+            if (pacienteAtualizado != null) {
+                // Atualiza a referência local
+                this.paciente = pacienteAtualizado;
+
+                // NOTIFICAR OS PAINÉIS DA ATUALIZAÇÃO
+                if (patientUpdateListener != null) {
+                    patientUpdateListener.onPatientUpdated(pacienteAtualizado);
+                }
+
+                // Atualizar campos do formulário com dados atualizados
+                preencherCamposComDadosTabela(pacienteAtualizado);
+            }
+
             // Mostrar classificação do IMC quando salvar (se houver)
             if (!txtImc.getText().isEmpty()) {
                 String classificacao = getClassificacaoImc(paciente.getImc());
@@ -586,7 +616,6 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
             aplicarBloqueioCondicional();
             btnEditar.setText("Editar");
             btnEditar.setBackground(new Color(255, 152, 0));
-            preencherCamposComDadosTabela(paciente);
 
         } catch (NumberFormatException ex) {
             LOGGER.log(Level.WARNING, "Erro de formato nos dados", ex);
@@ -618,19 +647,27 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
         if (confirmacao == JOptionPane.YES_OPTION) {
             try {
                 LOGGER.info("Excluindo paciente ID: " + paciente.getId());
-                
+
                 boolean sucesso = pacienteService.deletar(paciente.getId());
-                
+
                 if (sucesso) {
+                    int pacienteId = paciente.getId(); // Salvar ID antes de limpar
+
                     JOptionPane.showMessageDialog(this, "Paciente excluído com sucesso!",
                             "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+
+                    // NOTIFICAR OS PAINÉIS DA EXCLUSÃO
+                    if (patientUpdateListener != null) {
+                        patientUpdateListener.onPatientDeleted(pacienteId);
+                    }
+
                     limparCampos();
                     this.paciente = new Paciente(); // Reset
                 } else {
                     JOptionPane.showMessageDialog(this, "Erro ao excluir paciente!",
                             "Erro", JOptionPane.ERROR_MESSAGE);
                 }
-                
+
             } catch (ApiException ex) {
                 LOGGER.log(Level.SEVERE, "Erro na API ao excluir paciente", ex);
                 JOptionPane.showMessageDialog(this, "Erro na comunicação com a API: " + ex.getMessage(),

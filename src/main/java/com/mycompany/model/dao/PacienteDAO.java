@@ -77,7 +77,7 @@ public class PacienteDAO {
             stmt.setString(6, p.getSus());
             stmt.setString(7, p.getTelefone());
             stmt.setString(8, p.getEndereco());
-            stmt.setObject(9, p.getPaXmmhg());
+            stmt.setObject(9, p.getPaXMmhg());
             stmt.setObject(10, p.getFcBpm(), Types.FLOAT);
             stmt.setObject(11, p.getFrIbpm(), Types.FLOAT);
             stmt.setObject(12, p.getTemperaturaC(), Types.FLOAT);
@@ -160,7 +160,7 @@ public class PacienteDAO {
             stmt.setString(6, p.getSus());
             stmt.setString(7, p.getTelefone());
             stmt.setString(8, p.getEndereco());
-            stmt.setObject(9, p.getPaXmmhg());
+            stmt.setObject(9, p.getPaXMmhg());
             stmt.setObject(10, p.getFcBpm(), Types.FLOAT);
             stmt.setObject(11, p.getFrIbpm(), Types.FLOAT);
             stmt.setObject(12, p.getTemperaturaC(), Types.FLOAT);
@@ -216,7 +216,7 @@ public class PacienteDAO {
         p.setSus(rs.getString("sus"));
         p.setTelefone(rs.getString("telefone"));
         p.setEndereco(rs.getString("endereço"));
-        p.setPaXmmhg(rs.getString("pa_x_mmhg"));
+        p.setPaXMmhg(rs.getString("pa_x_mmhg"));
 
         // Conversões seguras para Float
         Object fcObj = rs.getObject("fc_bpm");

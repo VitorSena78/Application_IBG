@@ -247,41 +247,37 @@ public class PainelSaude2 extends javax.swing.JPanel {
     
     // Método público para adicionar novos pacientes
     private void loadPacientes() {
+        System.out.println("=== DEBUG loadPacientes ===");
+        System.out.println("Pacientes recebidos: " + (pacientes != null ? pacientes.size() : "NULL"));
+
         if (pacientes == null) {
             System.err.println("A lista de pacientes está nula. Nenhum dado será adicionado.");
             return;
         }
 
-        java.text.SimpleDateFormat formatoDesejado = new java.text.SimpleDateFormat("dd/MM/yyyy");
-        java.text.SimpleDateFormat formatoISO = new java.text.SimpleDateFormat("yyyy-MM-dd");
-        
-        tableModel.setRowCount(0); // Limpar tabela
+        if (pacientes.isEmpty()) {
+            System.err.println("A lista de pacientes está vazia. Nenhum dado será adicionado.");
+            return;
+        }
 
-        for (Paciente p : pacientes) {
+        // Limpar tabela apenas uma vez no início
+        tableModel.setRowCount(0);
+        System.out.println("Tabela limpa. Adicionando " + pacientes.size() + " pacientes...");
 
-            if (p.getDataNascimento() != null && !p.getDataNascimento().isEmpty()) {
-                try {
-                    java.util.Date data;
-                    String dataNascimento = p.getDataNascimento();
+        for (int i = 0; i < pacientes.size(); i++) {
+            Paciente p = pacientes.get(i);
+            System.out.println("Processando paciente " + (i+1) + ": " + 
+                              (p != null ? p.getNome() : "NULL") + " (ID: " + 
+                              (p != null ? p.getId() : "NULL") + ")");
 
-                    // Tenta interpretar no formato dd/MM/yyyy
-                    try {
-                        data = formatoDesejado.parse(dataNascimento);
-                    } catch (java.text.ParseException ex1) {
-                        // Se falhar, tenta no formato yyyy-MM-dd
-                        data = formatoISO.parse(dataNascimento);
-                    }
-
-                    // Formata a data no formato desejado
-                    formatoDesejado.format(data);
-                } catch (java.text.ParseException e) {
-                    e.printStackTrace();
-                }
+            if (p == null) {
+                System.err.println("Paciente " + i + " é NULL - pulando");
+                continue;
             }
 
-            tableModel.addRow(new Object[]{
+            Object[] row = {
                 p.getNome() != null ? p.getNome() : "",                          // Nome do Paciente
-                p.getPaXmmhg() != null ? p.getPaXmmhg() : "",                    // Pressão arterial (ex: 120/80 mmHg)
+                p.getPaXMmhg() != null ? p.getPaXMmhg() : "",                    // Pressão arterial
                 p.getFcBpm() != null ? String.valueOf(p.getFcBpm()) : "",        // FC (bpm)
                 p.getFrIbpm() != null ? String.valueOf(p.getFrIbpm()) : "",      // FR (irpm)
                 p.getTemperaturaC() != null ? String.valueOf(p.getTemperaturaC()) : "", // Temperatura (°C)
@@ -290,15 +286,60 @@ public class PainelSaude2 extends javax.swing.JPanel {
                 p.getPeso() != null ? String.valueOf(p.getPeso()) : "",          // Peso (kg)
                 p.getAltura() != null ? String.valueOf(p.getAltura()) : "",      // Altura (m)
                 p.getImc() != null ? String.valueOf(p.getImc()) : "",            // IMC calculado
-                p.getId() != 0 ? String.valueOf(p.getId()) : ""               // ID do paciente (oculta)
-            });
+                p.getId() != null ? String.valueOf(p.getId()) : ""               // ID do paciente (oculta)
+            };
+
+            tableModel.addRow(row);
+            System.out.println("Linha adicionada para: " + p.getNome());
         }
+
+        // Forçar atualização visual
+        tableModel.fireTableDataChanged();
+        jTable1.revalidate();
+        jTable1.repaint();
+
+        System.out.println("Total de linhas na tabela: " + tableModel.getRowCount());
+        System.out.println("=== FIM loadPacientes ===");
     }
     
     // Método para recarregar todos os dados (fallback)
-    public void reloadData(List<Paciente> pacientes) {
-        this.pacientes = pacientes;
-        loadPacientes();
+    public void reloadData(List<Paciente> novosPacientes) {
+        System.out.println("=== reloadData chamado ===");
+        System.out.println("Novos pacientes: " + (novosPacientes != null ? novosPacientes.size() : "NULL"));
+
+        // Atualizar referência da lista
+        this.pacientes = novosPacientes;
+
+        // Recarregar dados na tabela
+        SwingUtilities.invokeLater(() -> {
+            loadPacientes();
+        });
+    }
+    
+    public void debugEstadoTabela() {
+        System.out.println("=== DEBUG ESTADO DA TABELA (PainelSaude2) ===");
+        System.out.println("TableModel existe: " + (tableModel != null));
+        System.out.println("JTable existe: " + (jTable1 != null));
+        System.out.println("Lista pacientes: " + (pacientes != null ? pacientes.size() : "NULL"));
+
+        if (tableModel != null) {
+            System.out.println("Linhas na tabela: " + tableModel.getRowCount());
+            System.out.println("Colunas na tabela: " + tableModel.getColumnCount());
+
+            // Mostrar algumas linhas se existirem
+            for (int i = 0; i < Math.min(3, tableModel.getRowCount()); i++) {
+                Object nome = tableModel.getValueAt(i, 0);
+                Object id = tableModel.getValueAt(i, 10);
+                System.out.println("Linha " + i + ": " + nome + " (ID: " + id + ")");
+            }
+        }
+
+        if (jTable1 != null) {
+            System.out.println("Tabela visível: " + jTable1.isVisible());
+            System.out.println("Scroll pane visível: " + jScrollPane1.isVisible());
+            System.out.println("Tamanho da tabela: " + jTable1.getSize());
+        }
+        System.out.println("=== FIM DEBUG ===");
     }
     
     // Método público para limpar todos os dados
@@ -313,7 +354,7 @@ public class PainelSaude2 extends javax.swing.JPanel {
         
         Object[] row = {
             p.getNome() != null ? p.getNome() : "",                          // Nome do Paciente
-            p.getPaXmmhg() != null ? p.getPaXmmhg() : "",                    // Pressão arterial (ex: 120/80 mmHg)
+            p.getPaXMmhg() != null ? p.getPaXMmhg() : "",                    // Pressão arterial (ex: 120/80 mmHg)
             p.getFcBpm() != null ? String.valueOf(p.getFcBpm()) : "",        // FC (bpm)
             p.getFrIbpm() != null ? String.valueOf(p.getFrIbpm()) : "",      // FR (irpm)
             p.getTemperaturaC() != null ? String.valueOf(p.getTemperaturaC()) : "", // Temperatura (°C)
@@ -345,7 +386,7 @@ public class PainelSaude2 extends javax.swing.JPanel {
                 if (nomeNaTabela != null && nomeNaTabela.toString().equals(nomeEsperado)) {
                     // Atualiza a linha correspondente da tabela
                     tableModel.setValueAt(pacienteAtualizado.getNome() != null ? pacienteAtualizado.getNome() : "", i, 0);
-                    tableModel.setValueAt(pacienteAtualizado.getPaXmmhg() != null ? pacienteAtualizado.getPaXmmhg() : "", i, 1);
+                    tableModel.setValueAt(pacienteAtualizado.getPaXMmhg() != null ? pacienteAtualizado.getPaXMmhg() : "", i, 1);
                     tableModel.setValueAt(pacienteAtualizado.getFcBpm() != null ? String.valueOf(pacienteAtualizado.getFcBpm()) : "", i, 2);
                     tableModel.setValueAt(pacienteAtualizado.getFrIbpm() != null ? String.valueOf(pacienteAtualizado.getFrIbpm()) : "", i, 3);
                     tableModel.setValueAt(pacienteAtualizado.getTemperaturaC() != null ? String.valueOf(pacienteAtualizado.getTemperaturaC()) : "", i, 4);
@@ -405,7 +446,7 @@ public class PainelSaude2 extends javax.swing.JPanel {
                 // Pressão Arterial (PA)
                 Object paObj = tableModel.getValueAt(row, 1);
                 if (paObj != null) {
-                    paciente.setPaXmmhg(paObj.toString());
+                    paciente.setPaXMmhg(paObj.toString());
                 }
 
                 // Frequência Cardíaca (FC)

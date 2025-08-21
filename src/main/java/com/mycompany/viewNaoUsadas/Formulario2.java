@@ -359,7 +359,7 @@ public class Formulario2 extends javax.swing.JPanel {
 
             // Converter campos não vazios
             if (!txtPressaoArterial.getText().isEmpty()) {
-                registro.paXmmhg = Float.parseFloat(txtPressaoArterial.getText().replace(",", "."));
+                registro.paXMmhg = Float.parseFloat(txtPressaoArterial.getText().replace(",", "."));
             }
             if (!txtFrequenciaCardiaca.getText().isEmpty()) {
                 registro.fcBpm = Float.parseFloat(txtFrequenciaCardiaca.getText().replace(",", "."));
@@ -432,7 +432,7 @@ public class Formulario2 extends javax.swing.JPanel {
             SinaisVitais reg = listaRegistros.get(i);
             lista.append("Registro ").append(i + 1).append(":\n");
 
-            if (reg.paXmmhg != null) lista.append("  PA: ").append(reg.paXmmhg).append(" mmHg\n");
+            if (reg.paXMmhg != null) lista.append("  PA: ").append(reg.paXMmhg).append(" mmHg\n");
             if (reg.fcBpm != null) lista.append("  FC: ").append(reg.fcBpm).append(" bpm\n");
             if (reg.frIbpm != null) lista.append("  FR: ").append(reg.frIbpm).append(" irpm\n");
             if (reg.temperaturaC != null) lista.append("  Temp: ").append(reg.temperaturaC).append(" °C\n");
@@ -461,7 +461,7 @@ public class Formulario2 extends javax.swing.JPanel {
 
     // Classe interna para representar sinais vitais
     private static class SinaisVitais {
-        Float paXmmhg;          // Pressão Arterial
+        Float paXMmhg;          // Pressão Arterial
         Float fcBpm;            // Frequência Cardíaca
         Float frIbpm;           // Frequência Respiratória
         Float temperaturaC;     // Temperatura

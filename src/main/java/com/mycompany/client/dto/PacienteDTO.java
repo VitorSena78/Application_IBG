@@ -3,14 +3,17 @@ package com.mycompany.client.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import java.util.ArrayList;
 
 /**
- * DTO para receber dados de Paciente da API Spring Boot
- * Corresponde exatamente ao formato JSON retornado pela API
+ * DTO corrigido para corresponder EXATAMENTE ao formato da API Spring Boot
+ * Baseado na análise do JSON de resposta real da API
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PacienteDTO {
     
+    // IMPORTANTE: A API retorna "server_id", não "id"
+    @JsonProperty("server_id")
     private Integer id;
     
     private String nome;
@@ -24,38 +27,34 @@ public class PacienteDTO {
     private String nomeDaMae;
     
     private String cpf;
-    
     private String sus;
-    
     private String telefone;
     
     @JsonProperty("endereço")
     private String endereco;
     
-    @JsonProperty("pa_xmmhg")
-    private String paXmmhg;
+    @JsonProperty("pa_x_mmhg")
+    private String paXMmhg;
     
+    // CRÍTICO: A API retorna todos esses campos como Double, não Integer
     @JsonProperty("fc_bpm")
-    private Float fcBpm;
+    private Double fcBpm;
     
     @JsonProperty("fr_ibpm")
-    private Float frIbpm;
+    private Double frIbpm;
     
     @JsonProperty("temperatura_c")
-    private Float temperaturaC;
+    private Double temperaturaC;
     
     @JsonProperty("hgt_mgld")
-    private Float hgtMgld;
+    private Double hgtMgld;
     
-    private Float spo2;
+    private Double spo2;
+    private Double peso;
+    private Double altura;
+    private Double imc;
     
-    private Float peso;
-    
-    private Float altura;
-    
-    private Float imc;
-    
-    // Campos extras da API que não existem no modelo de domínio
+    // Campos de auditoria e sincronização
     @JsonProperty("created_at")
     private String createdAt;
     
@@ -65,220 +64,127 @@ public class PacienteDTO {
     @JsonProperty("sync_status")
     private String syncStatus;
     
+    // IMPORTANTE: A API retorna "last_sync_timestamp", não "last_sync_at"
+    @JsonProperty("last_sync_timestamp")
+    private Long lastSyncTimestamp;
+    
+    // Campos adicionais que podem ser úteis (mantidos para compatibilidade)
     @JsonProperty("device_id")
     private String deviceId;
     
     @JsonProperty("local_id")
     private String localId;
     
-    @JsonProperty("last_sync_at")
-    private String lastSyncAt;
-    
-    // Lista de especialidades (relacionamento)
+    // Lista de especialidades (flexível - pode não estar presente na resposta atual)
     private List<PacienteEspecialidadeDTO> especialidades;
     
-    // Construtor padrão
     public PacienteDTO() {}
     
     // Getters e Setters
-    public Integer getId() {
-        return id;
-    }
+    public Integer getId() { return id; }
+    public void setId(Integer id) { this.id = id; }
     
-    public void setId(Integer id) {
-        this.id = id;
-    }
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
     
-    public String getNome() {
-        return nome;
-    }
+    public String getDataNascimento() { return dataNascimento; }
+    public void setDataNascimento(String dataNascimento) { this.dataNascimento = dataNascimento; }
     
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
+    public Integer getIdade() { return idade; }
+    public void setIdade(Integer idade) { this.idade = idade; }
     
-    public String getDataNascimento() {
-        return dataNascimento;
-    }
+    public String getNomeDaMae() { return nomeDaMae; }
+    public void setNomeDaMae(String nomeDaMae) { this.nomeDaMae = nomeDaMae; }
     
-    public void setDataNascimento(String dataNascimento) {
-        this.dataNascimento = dataNascimento;
-    }
+    public String getCpf() { return cpf; }
+    public void setCpf(String cpf) { this.cpf = cpf; }
     
-    public Integer getIdade() {
-        return idade;
-    }
+    public String getSus() { return sus; }
+    public void setSus(String sus) { this.sus = sus; }
     
-    public void setIdade(Integer idade) {
-        this.idade = idade;
-    }
+    public String getTelefone() { return telefone; }
+    public void setTelefone(String telefone) { this.telefone = telefone; }
     
-    public String getNomeDaMae() {
-        return nomeDaMae;
-    }
+    public String getEndereco() { return endereco; }
+    public void setEndereco(String endereco) { this.endereco = endereco; }
     
-    public void setNomeDaMae(String nomeDaMae) {
-        this.nomeDaMae = nomeDaMae;
-    }
+    public String getPaXMmhg() { return paXMmhg; }
+    public void setPaXMmhg(String paXMmhg) { this.paXMmhg = paXMmhg; }
     
-    public String getCpf() {
-        return cpf;
-    }
+    public Double getFcBpm() { return fcBpm; }
+    public void setFcBpm(Double fcBpm) { this.fcBpm = fcBpm; }
     
-    public void setCpf(String cpf) {
-        this.cpf = cpf;
-    }
+    public Double getFrIbpm() { return frIbpm; }
+    public void setFrIbpm(Double frIbpm) { this.frIbpm = frIbpm; }
     
-    public String getSus() {
-        return sus;
-    }
+    public Double getTemperaturaC() { return temperaturaC; }
+    public void setTemperaturaC(Double temperaturaC) { this.temperaturaC = temperaturaC; }
     
-    public void setSus(String sus) {
-        this.sus = sus;
-    }
+    public Double getHgtMgld() { return hgtMgld; }
+    public void setHgtMgld(Double hgtMgld) { this.hgtMgld = hgtMgld; }
     
-    public String getTelefone() {
-        return telefone;
-    }
+    public Double getSpo2() { return spo2; }
+    public void setSpo2(Double spo2) { this.spo2 = spo2; }
     
-    public void setTelefone(String telefone) {
-        this.telefone = telefone;
-    }
+    public Double getPeso() { return peso; }
+    public void setPeso(Double peso) { this.peso = peso; }
     
-    public String getEndereco() {
-        return endereco;
-    }
+    public Double getAltura() { return altura; }
+    public void setAltura(Double altura) { this.altura = altura; }
     
-    public void setEndereco(String endereco) {
-        this.endereco = endereco;
-    }
+    public Double getImc() { return imc; }
+    public void setImc(Double imc) { this.imc = imc; }
     
-    public String getPaXmmhg() {
-        return paXmmhg;
-    }
+    public String getCreatedAt() { return createdAt; }
+    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
     
-    public void setPaXmmhg(String paXmmhg) {
-        this.paXmmhg = paXmmhg;
-    }
+    public String getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
     
-    public Float getFcBpm() {
-        return fcBpm;
-    }
+    public String getSyncStatus() { return syncStatus; }
+    public void setSyncStatus(String syncStatus) { this.syncStatus = syncStatus; }
     
-    public void setFcBpm(Float fcBpm) {
-        this.fcBpm = fcBpm;
-    }
+    public Long getLastSyncTimestamp() { return lastSyncTimestamp; }
+    public void setLastSyncTimestamp(Long lastSyncTimestamp) { this.lastSyncTimestamp = lastSyncTimestamp; }
     
-    public Float getFrIbpm() {
-        return frIbpm;
-    }
+    public String getDeviceId() { return deviceId; }
+    public void setDeviceId(String deviceId) { this.deviceId = deviceId; }
     
-    public void setFrIbpm(Float frIbpm) {
-        this.frIbpm = frIbpm;
-    }
-    
-    public Float getTemperaturaC() {
-        return temperaturaC;
-    }
-    
-    public void setTemperaturaC(Float temperaturaC) {
-        this.temperaturaC = temperaturaC;
-    }
-    
-    public Float getHgtMgld() {
-        return hgtMgld;
-    }
-    
-    public void setHgtMgld(Float hgtMgld) {
-        this.hgtMgld = hgtMgld;
-    }
-    
-    public Float getSpo2() {
-        return spo2;
-    }
-    
-    public void setSpo2(Float spo2) {
-        this.spo2 = spo2;
-    }
-    
-    public Float getPeso() {
-        return peso;
-    }
-    
-    public void setPeso(Float peso) {
-        this.peso = peso;
-    }
-    
-    public Float getAltura() {
-        return altura;
-    }
-    
-    public void setAltura(Float altura) {
-        this.altura = altura;
-    }
-    
-    public Float getImc() {
-        return imc;
-    }
-    
-    public void setImc(Float imc) {
-        this.imc = imc;
-    }
-    
-    public String getCreatedAt() {
-        return createdAt;
-    }
-    
-    public void setCreatedAt(String createdAt) {
-        this.createdAt = createdAt;
-    }
-    
-    public String getUpdatedAt() {
-        return updatedAt;
-    }
-    
-    public void setUpdatedAt(String updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-    
-    public String getSyncStatus() {
-        return syncStatus;
-    }
-    
-    public void setSyncStatus(String syncStatus) {
-        this.syncStatus = syncStatus;
-    }
-    
-    public String getDeviceId() {
-        return deviceId;
-    }
-    
-    public void setDeviceId(String deviceId) {
-        this.deviceId = deviceId;
-    }
-    
-    public String getLocalId() {
-        return localId;
-    }
-    
-    public void setLocalId(String localId) {
-        this.localId = localId;
-    }
-    
-    public String getLastSyncAt() {
-        return lastSyncAt;
-    }
-    
-    public void setLastSyncAt(String lastSyncAt) {
-        this.lastSyncAt = lastSyncAt;
-    }
+    public String getLocalId() { return localId; }
+    public void setLocalId(String localId) { this.localId = localId; }
     
     public List<PacienteEspecialidadeDTO> getEspecialidades() {
-        return especialidades;
+        return especialidades != null ? especialidades : new ArrayList<>();
     }
     
     public void setEspecialidades(List<PacienteEspecialidadeDTO> especialidades) {
         this.especialidades = especialidades;
+    }
+    
+    /**
+     * Método de conveniência para obter apenas os IDs das especialidades
+     */
+    public List<Integer> getEspecialidadeIds() {
+        List<Integer> ids = new ArrayList<>();
+        if (especialidades != null) {
+            for (PacienteEspecialidadeDTO esp : especialidades) {
+                Integer id = esp.getEspecialidadeId();
+                if (id != null) {
+                    ids.add(id);
+                }
+            }
+        }
+        return ids;
+    }
+    
+    /**
+     * Método de conveniência para converter timestamp para data legível
+     */
+    public String getLastSyncAtFormatted() {
+        if (lastSyncTimestamp != null) {
+            return new java.util.Date(lastSyncTimestamp).toString();
+        }
+        return null;
     }
     
     @Override
@@ -290,6 +196,8 @@ public class PacienteDTO {
                 ", idade=" + idade +
                 ", cpf='" + cpf + '\'' +
                 ", syncStatus='" + syncStatus + '\'' +
+                ", lastSyncTimestamp=" + lastSyncTimestamp +
+                ", especialidades=" + (especialidades != null ? especialidades.size() : 0) +
                 '}';
     }
 }

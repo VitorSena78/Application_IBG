@@ -183,7 +183,7 @@ public class PacienteNotificationManager {
 
         // Sinais vitais
         if (node.has("pa_x_mmhg") && !node.get("pa_x_mmhg").isNull()) {
-            paciente.setPaXmmhg(node.get("pa_x_mmhg").asText()); 
+            paciente.setPaXMmhg(node.get("pa_x_mmhg").asText()); 
         }
         if (node.has("fc_bpm") && !node.get("fc_bpm").isNull()) {
             double fcValue = node.get("fc_bpm").asDouble();

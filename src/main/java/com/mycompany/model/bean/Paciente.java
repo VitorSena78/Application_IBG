@@ -15,7 +15,7 @@ public class Paciente {
     private String sus;               // Número do cartão SUS (Sistema Único de Saúde)
     private String telefone;          // Telefone de contato do paciente
     private String endereco;          // Endereço residencial do paciente
-    private String paXmmhg;           // Pressão arterial no formato sistólica/diastólica (ex: "120/80 mmHg")
+    private String paXMmhg;           // Pressão arterial no formato sistólica/diastólica (ex: "120/80 mmHg")
     private float fcBpm;              // Frequência cardíaca em batimentos por minuto (bpm)
     private float frIbpm;             // Frequência respiratória em movimentos por minuto (rpm)
     private float temperaturaC;       // Temperatura corporal em graus Celsius
@@ -35,7 +35,7 @@ public class Paciente {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
@@ -103,12 +103,12 @@ public class Paciente {
         this.endereco = endereco;
     }
 
-    public String getPaXmmhg() {
-        return paXmmhg;
+    public String getPaXMmhg() {
+        return paXMmhg;
     }
 
-    public void setPaXmmhg(String paXmmhg) {
-        this.paXmmhg = paXmmhg;
+    public void setPaXMmhg(String paXMmhg) {
+        this.paXMmhg = paXMmhg;
     }
 
     public Float getFcBpm() {
@@ -116,7 +116,7 @@ public class Paciente {
     }
 
     public void setFcBpm(Float fcBpm) {
-        this.fcBpm = fcBpm;
+        this.fcBpm = (fcBpm != null) ? fcBpm : 0.0f;
     }
 
     public Float getFrIbpm() {
@@ -124,7 +124,7 @@ public class Paciente {
     }
 
     public void setFrIbpm(Float frIbpm) {
-        this.frIbpm = frIbpm;
+        this.frIbpm = (frIbpm != null) ? frIbpm : 0.0f;
     }
 
     public Float getTemperaturaC() {
@@ -132,7 +132,7 @@ public class Paciente {
     }
 
     public void setTemperaturaC(Float temperaturaC) {
-        this.temperaturaC = temperaturaC;
+        this.temperaturaC = (temperaturaC != null) ? temperaturaC : 0.0f;
     }
 
     public Float getHgtMgld() {
@@ -140,7 +140,7 @@ public class Paciente {
     }
 
     public void setHgtMgld(Float hgtMgld) {
-        this.hgtMgld = hgtMgld;
+        this.hgtMgld = (hgtMgld != null) ? hgtMgld : 0.0f;
     }
 
     public Float getSpo2() {
@@ -148,7 +148,7 @@ public class Paciente {
     }
 
     public void setSpo2(Float spo2) {
-        this.spo2 = spo2;
+        this.spo2 = (spo2 != null) ? spo2 : 0.0f;
     }
 
     public Float getPeso() {
@@ -156,7 +156,7 @@ public class Paciente {
     }
 
     public void setPeso(Float peso) {
-        this.peso = peso;
+        this.peso = (peso != null) ? peso : 0.0f;
     }
 
     public Float getAltura() {
@@ -164,7 +164,7 @@ public class Paciente {
     }
 
     public void setAltura(Float altura) {
-        this.altura = altura;
+        this.altura = (altura != null) ? altura : 0.0f;
     }
 
     public Float getImc() {
@@ -172,7 +172,7 @@ public class Paciente {
     }
 
     public void setImc(Float imc) {
-        this.imc = imc;
+        this.imc = (imc != null) ? imc : 0.0f;
     }
     
     @Override
@@ -187,7 +187,7 @@ public class Paciente {
                 "\n  SUS: " + (sus != null ? sus : "N/A") +
                 "\n  Telefone: " + (telefone != null ? telefone : "N/A") +
                 "\n  Endereço: " + (endereco != null ? endereco : "N/A") +
-                "\n  Pressão Arterial: " + (paXmmhg != null ? paXmmhg : "N/A") +
+                "\n  Pressão Arterial: " + (paXMmhg != null ? paXMmhg : "N/A") +
                 "\n  Frequência Cardíaca: " + (fcBpm > 0 ? fcBpm + " bpm" : "N/A") +
                 "\n  Frequência Respiratória: " + (frIbpm > 0 ? frIbpm + " ipm" : "N/A") +
                 "\n  Temperatura: " + (temperaturaC > 0 ? temperaturaC + " °C" : "N/A") +

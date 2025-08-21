@@ -2,6 +2,8 @@ package com.mycompany.service;
 
 import com.mycompany.client.ApiClient;
 import com.mycompany.client.ApiException;
+import com.mycompany.client.dto.EspecialidadeDTO;
+import com.mycompany.client.mapper.DtoMapper;
 import com.mycompany.model.bean.Especialidade;
 import com.fasterxml.jackson.core.type.TypeReference;
 
@@ -11,7 +13,7 @@ import java.util.logging.Level;
 
 /**
  * Service para operações com Especialidade através da API
- * Substitui o EspecialidadeDAO
+ * Versão corrigida que usa DTOs corretamente
  */
 public class EspecialidadeService {
     
@@ -33,11 +35,15 @@ public class EspecialidadeService {
         }
         
         try {
-            Especialidade especialidadeRetornada = apiClient.post(ESPECIALIDADE_ENDPOINT, especialidade, Especialidade.class);
+            // Converte modelo para DTO antes de enviar
+            EspecialidadeDTO especialidadeDto = DtoMapper.toDto(especialidade);
             
-            if (especialidadeRetornada != null && especialidadeRetornada.getId() != null) {
+            // Envia DTO para a API
+            EspecialidadeDTO especialidadeDtoRetornada = apiClient.post(ESPECIALIDADE_ENDPOINT, especialidadeDto, EspecialidadeDTO.class);
+            
+            if (especialidadeDtoRetornada != null && especialidadeDtoRetornada.getId() != null) {
                 // Atualiza o ID no objeto original
-                especialidade.setId(especialidadeRetornada.getId());
+                especialidade.setId(especialidadeDtoRetornada.getId());
                 LOGGER.info("Especialidade inserida com sucesso: " + especialidade.getNome());
                 return true;
             }
@@ -54,7 +60,13 @@ public class EspecialidadeService {
      */
     public List<Especialidade> listarTodas() {
         try {
-            List<Especialidade> especialidades = apiClient.getList(ESPECIALIDADE_ENDPOINT, new TypeReference<List<Especialidade>>(){});
+            // Recebe DTOs da API
+            List<EspecialidadeDTO> especialidadeDtos = apiClient.getList(ESPECIALIDADE_ENDPOINT, 
+                                                                         new TypeReference<List<EspecialidadeDTO>>(){});
+            
+            // Converte DTOs para modelos de domínio
+            List<Especialidade> especialidades = DtoMapper.toEspecialidadeModelList(especialidadeDtos);
+            
             LOGGER.info("Listadas " + especialidades.size() + " especialidades");
             return especialidades;
             
@@ -74,15 +86,17 @@ public class EspecialidadeService {
         }
         
         try {
-            Especialidade especialidade = apiClient.get(ESPECIALIDADE_ENDPOINT + "/" + id, Especialidade.class);
+            // Recebe DTO da API
+            EspecialidadeDTO especialidadeDto = apiClient.get(ESPECIALIDADE_ENDPOINT + "/" + id, EspecialidadeDTO.class);
             
-            if (especialidade != null) {
+            if (especialidadeDto != null) {
                 LOGGER.info("Especialidade encontrada: ID " + id);
+                // Converte DTO para modelo de domínio
+                return DtoMapper.toModel(especialidadeDto);
             } else {
                 LOGGER.info("Especialidade não encontrada: ID " + id);
+                return null;
             }
-            
-            return especialidade;
             
         } catch (ApiException e) {
             LOGGER.log(Level.SEVERE, "Erro ao buscar especialidade por ID: " + id, e);
@@ -102,10 +116,21 @@ public class EspecialidadeService {
         
         try {
             String endpoint = ESPECIALIDADE_ENDPOINT + "/" + especialidade.getId();
-            Especialidade especialidadeAtualizada = apiClient.put(endpoint, especialidade, Especialidade.class);
             
-            if (especialidadeAtualizada != null) {
+            // Converte modelo para DTO antes de enviar
+            EspecialidadeDTO especialidadeDto = DtoMapper.toDto(especialidade);
+            
+            // Envia DTO para a API
+            EspecialidadeDTO especialidadeDtoAtualizada = apiClient.put(endpoint, especialidadeDto, EspecialidadeDTO.class);
+            
+            if (especialidadeDtoAtualizada != null) {
                 LOGGER.info("Especialidade atualizada: ID " + especialidade.getId());
+                
+                // Atualiza o objeto original com os dados retornados
+                Especialidade especialidadeAtualizada = DtoMapper.toModel(especialidadeDtoAtualizada);
+                if (especialidadeAtualizada != null) {
+                    copiarDados(especialidadeAtualizada, especialidade);
+                }
                 return true;
             } else {
                 LOGGER.warning("Nenhuma especialidade encontrada para atualizar: ID " + especialidade.getId());
@@ -116,6 +141,16 @@ public class EspecialidadeService {
             LOGGER.log(Level.SEVERE, "Erro ao atualizar especialidade: ID " + especialidade.getId(), e);
             return false;
         }
+    }
+    
+    /**
+     * Método auxiliar para copiar dados entre objetos Especialidade
+     */
+    private void copiarDados(Especialidade origem, Especialidade destino) {
+        destino.setId(origem.getId());
+        destino.setNome(origem.getNome());
+        destino.setAtendimentosRestantesHoje(origem.getAtendimentosRestantesHoje());
+        destino.setAtendimentosTotaisHoje(origem.getAtendimentosTotaisHoje());
     }
     
     /**
@@ -235,7 +270,14 @@ public class EspecialidadeService {
     public List<Especialidade> listarComAtendimentosDisponiveis() {
         try {
             String endpoint = ESPECIALIDADE_ENDPOINT + "/com-atendimentos";
-            List<Especialidade> especialidades = apiClient.getList(endpoint, new TypeReference<List<Especialidade>>(){});
+            
+            // Recebe DTOs da API
+            List<EspecialidadeDTO> especialidadeDtos = apiClient.getList(endpoint, 
+                                                                         new TypeReference<List<EspecialidadeDTO>>(){});
+            
+            // Converte DTOs para modelos de domínio
+            List<Especialidade> especialidades = DtoMapper.toEspecialidadeModelList(especialidadeDtos);
+            
             LOGGER.info("Listadas " + especialidades.size() + " especialidades com atendimentos disponíveis");
             return especialidades;
             

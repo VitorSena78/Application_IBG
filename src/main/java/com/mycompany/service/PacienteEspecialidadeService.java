@@ -2,6 +2,8 @@ package com.mycompany.service;
 
 import com.mycompany.client.ApiClient;
 import com.mycompany.client.ApiException;
+import com.mycompany.client.dto.PacienteEspecialidadeDTO;
+import com.mycompany.client.mapper.DtoMapper;
 import com.mycompany.model.bean.PacienteEspecialidade;
 import com.fasterxml.jackson.core.type.TypeReference;
 
@@ -12,7 +14,7 @@ import javax.swing.JOptionPane;
 
 /**
  * Service para operações com PacienteEspecialidade através da API
- * Substitui o PacienteEspecialidadeDAO
+ * Versão adaptada para trabalhar com DTOs
  */
 public class PacienteEspecialidadeService {
     
@@ -36,7 +38,11 @@ public class PacienteEspecialidadeService {
         }
         
         try {
-            PacienteEspecialidade resultado = apiClient.post(PACIENTE_ESPECIALIDADE_ENDPOINT, pacienteEspecialidade, PacienteEspecialidade.class);
+            // Converte o modelo para DTO antes de enviar
+            PacienteEspecialidadeDTO pacienteEspecialidadeDto = DtoMapper.toDto(pacienteEspecialidade);
+            
+            // Envia o DTO para a API
+            PacienteEspecialidadeDTO resultado = apiClient.post(PACIENTE_ESPECIALIDADE_ENDPOINT, pacienteEspecialidadeDto, PacienteEspecialidadeDTO.class);
             
             if (resultado != null) {
                 LOGGER.info("Associação inserida com sucesso: Paciente " + pacienteEspecialidade.getPacienteId() + 
@@ -64,14 +70,18 @@ public class PacienteEspecialidadeService {
 
         try {
             String endpoint = PACIENTE_ESPECIALIDADE_ENDPOINT + "/batch";
-            // CORREÇÃO: Usar o novo método postList do ApiClient
-            List<PacienteEspecialidade> resultado = apiClient.postList(endpoint, listaPacienteEspecialidade, 
-                                                                       new TypeReference<List<PacienteEspecialidade>>(){});
+            
+            // Converte a lista de modelos para DTOs antes de enviar
+            List<PacienteEspecialidadeDTO> dtoList = DtoMapper.toPacienteEspecialidadeDtoList(listaPacienteEspecialidade);
+            
+            // Envia os DTOs para a API
+            List<PacienteEspecialidadeDTO> resultadoDtos = apiClient.postList(endpoint, dtoList, 
+                                                                               new TypeReference<List<PacienteEspecialidadeDTO>>(){});
 
-            if (resultado != null && !resultado.isEmpty()) {
-                LOGGER.info("Lista de associações inserida com sucesso: " + resultado.size() + " itens");
+            if (resultadoDtos != null && !resultadoDtos.isEmpty()) {
+                LOGGER.info("Lista de associações inserida com sucesso: " + resultadoDtos.size() + " itens");
                 JOptionPane.showMessageDialog(null, 
-                    "Inserção em lote concluída!\n✓ " + resultado.size() + " associações inseridas com sucesso");
+                    "Inserção em lote concluída!\n✓ " + resultadoDtos.size() + " associações inseridas com sucesso");
                 return true;
             } else {
                 JOptionPane.showMessageDialog(null, "Nenhuma nova associação foi inserida.");
@@ -90,8 +100,13 @@ public class PacienteEspecialidadeService {
      */
     public List<PacienteEspecialidade> listarTodos() {
         try {
-            List<PacienteEspecialidade> associacoes = apiClient.getList(PACIENTE_ESPECIALIDADE_ENDPOINT, 
-                                                                       new TypeReference<List<PacienteEspecialidade>>(){});
+            // Recebe DTOs da API
+            List<PacienteEspecialidadeDTO> associacaoDtos = apiClient.getList(PACIENTE_ESPECIALIDADE_ENDPOINT, 
+                                                                               new TypeReference<List<PacienteEspecialidadeDTO>>(){});
+            
+            // Converte DTOs para modelos de domínio
+            List<PacienteEspecialidade> associacoes = DtoMapper.toPacienteEspecialidadeModelList(associacaoDtos);
+            
             LOGGER.info("Listadas " + associacoes.size() + " associações");
             return associacoes;
             
@@ -111,8 +126,14 @@ public class PacienteEspecialidadeService {
         
         try {
             String endpoint = PACIENTE_ESPECIALIDADE_ENDPOINT + "/paciente/" + pacienteId;
-            List<PacienteEspecialidade> associacoes = apiClient.getList(endpoint, 
-                                                                       new TypeReference<List<PacienteEspecialidade>>(){});
+            
+            // Recebe DTOs da API
+            List<PacienteEspecialidadeDTO> associacaoDtos = apiClient.getList(endpoint, 
+                                                                               new TypeReference<List<PacienteEspecialidadeDTO>>(){});
+            
+            // Converte DTOs para modelos de domínio
+            List<PacienteEspecialidade> associacoes = DtoMapper.toPacienteEspecialidadeModelList(associacaoDtos);
+            
             LOGGER.info("Encontradas " + associacoes.size() + " especialidades para paciente ID: " + pacienteId);
             return associacoes;
             
@@ -132,8 +153,14 @@ public class PacienteEspecialidadeService {
         
         try {
             String endpoint = PACIENTE_ESPECIALIDADE_ENDPOINT + "/especialidade/" + especialidadeId;
-            List<PacienteEspecialidade> associacoes = apiClient.getList(endpoint, 
-                                                                       new TypeReference<List<PacienteEspecialidade>>(){});
+            
+            // Recebe DTOs da API
+            List<PacienteEspecialidadeDTO> associacaoDtos = apiClient.getList(endpoint, 
+                                                                               new TypeReference<List<PacienteEspecialidadeDTO>>(){});
+            
+            // Converte DTOs para modelos de domínio
+            List<PacienteEspecialidade> associacoes = DtoMapper.toPacienteEspecialidadeModelList(associacaoDtos);
+            
             LOGGER.info("Encontrados " + associacoes.size() + " pacientes para especialidade ID: " + especialidadeId);
             return associacoes;
             
@@ -153,15 +180,18 @@ public class PacienteEspecialidadeService {
         
         try {
             String endpoint = PACIENTE_ESPECIALIDADE_ENDPOINT + "/paciente/" + pacienteId + "/especialidade/" + especialidadeId;
-            PacienteEspecialidade associacao = apiClient.get(endpoint, PacienteEspecialidade.class);
             
-            if (associacao != null) {
+            // Recebe DTO da API
+            PacienteEspecialidadeDTO associacaoDto = apiClient.get(endpoint, PacienteEspecialidadeDTO.class);
+            
+            if (associacaoDto != null) {
                 LOGGER.info("Associação encontrada: Paciente " + pacienteId + " - Especialidade " + especialidadeId);
+                // Converte DTO para modelo de domínio
+                return DtoMapper.toModel(associacaoDto);
             } else {
                 LOGGER.info("Associação não encontrada: Paciente " + pacienteId + " - Especialidade " + especialidadeId);
+                return null;
             }
-            
-            return associacao;
             
         } catch (ApiException e) {
             LOGGER.log(Level.SEVERE, "Erro ao buscar associação específica", e);
@@ -183,7 +213,12 @@ public class PacienteEspecialidadeService {
         try {
             String endpoint = PACIENTE_ESPECIALIDADE_ENDPOINT + "/paciente/" + pacienteEspecialidade.getPacienteId() + 
                              "/especialidade/" + pacienteEspecialidade.getEspecialidadeId();
-            PacienteEspecialidade resultado = apiClient.put(endpoint, pacienteEspecialidade, PacienteEspecialidade.class);
+            
+            // Converte o modelo para DTO antes de enviar
+            PacienteEspecialidadeDTO pacienteEspecialidadeDto = DtoMapper.toDto(pacienteEspecialidade);
+            
+            // Envia o DTO para a API
+            PacienteEspecialidadeDTO resultado = apiClient.put(endpoint, pacienteEspecialidadeDto, PacienteEspecialidadeDTO.class);
             
             if (resultado != null) {
                 LOGGER.info("Associação atualizada: Paciente " + pacienteEspecialidade.getPacienteId() + 
@@ -304,8 +339,14 @@ public class PacienteEspecialidadeService {
         
         try {
             String endpoint = PACIENTE_ESPECIALIDADE_ENDPOINT + "/data/" + dataAtendimento.trim();
-            List<PacienteEspecialidade> associacoes = apiClient.getList(endpoint, 
-                                                                       new TypeReference<List<PacienteEspecialidade>>(){});
+            
+            // Recebe DTOs da API
+            List<PacienteEspecialidadeDTO> associacaoDtos = apiClient.getList(endpoint, 
+                                                                               new TypeReference<List<PacienteEspecialidadeDTO>>(){});
+            
+            // Converte DTOs para modelos de domínio
+            List<PacienteEspecialidade> associacoes = DtoMapper.toPacienteEspecialidadeModelList(associacaoDtos);
+            
             LOGGER.info("Encontradas " + associacoes.size() + " associações para a data: " + dataAtendimento);
             return associacoes;
             

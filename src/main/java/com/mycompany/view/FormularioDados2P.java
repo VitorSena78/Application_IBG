@@ -1,6 +1,7 @@
 package com.mycompany.view;
 
 
+import com.mycompany.listener.PatientUpdateListener;
 import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
 import com.mycompany.model.bean.PacienteEspecialidade;
@@ -56,6 +57,8 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     private DefaultListModel<EspecialidadeCheckBox> modeloLista;
     private JScrollPane scrollEspecialidades;
     
+    private PatientUpdateListener patientUpdateListener;
+    
     // Classe interna para representar uma especialidade com checkbox
     private class EspecialidadeCheckBox {
         private Especialidade especialidade;
@@ -75,6 +78,10 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         public String toString() {
             return especialidade.getNome();
         }
+    }
+    
+    public void setPatientUpdateListener(PatientUpdateListener listener) {
+        this.patientUpdateListener = listener;
     }
     
     // Renderer customizado para mostrar checkboxes na JList
@@ -796,7 +803,7 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         }
     }
 
-    // Método para salvar pacienteSalvo
+    // Método para salvar pacienteSalvo FormularioDados2P
     private void salvarPaciente() {
         // Verifica se há um paciente selecionado
         if (paciente == null || paciente.getNome() == null || paciente.getNome().trim().isEmpty()) {
@@ -821,22 +828,18 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                 return;
             }
 
-            // Criar cópia do paciente para atualização
-            Paciente pacienteSalvo = new Paciente();
-            pacienteSalvo.setId(paciente.getId()); // Manter o ID original
-
-            // Preenchimento dos campos obrigatórios
-            pacienteSalvo.setNome(txtNome.getText().trim());
-            pacienteSalvo.setCpf(txtCpf.getText().trim());
+            // CORREÇÃO: Atualizar o paciente existente ao invés de criar um novo
+            paciente.setNome(txtNome.getText().trim());
+            paciente.setCpf(txtCpf.getText().trim());
 
             // Campos opcionais
             if (!txtDataNascimento.getText().isEmpty()) {
-                pacienteSalvo.setDataNascimento(txtDataNascimento.getText());
+                paciente.setDataNascimento(txtDataNascimento.getText());
             }
 
             if (!txtIdade.getText().isEmpty()) {
                 try {
-                    pacienteSalvo.setIdade(Integer.parseInt(txtIdade.getText()));
+                    paciente.setIdade(Integer.parseInt(txtIdade.getText()));
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(this, "Idade deve ser um número inteiro!",
                             "Erro de Formato", JOptionPane.ERROR_MESSAGE);
@@ -845,24 +848,23 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
             }
 
             if (!txtNomeDaMae.getText().trim().isEmpty()) {
-                pacienteSalvo.setNomeDaMae(txtNomeDaMae.getText().trim());
+                paciente.setNomeDaMae(txtNomeDaMae.getText().trim());
             }
 
             if (!txtSus.getText().trim().isEmpty()) {
-                pacienteSalvo.setSus(txtSus.getText().trim());
+                paciente.setSus(txtSus.getText().trim());
             }
 
             if (!txtTelefone.getText().trim().isEmpty()) {
-                pacienteSalvo.setTelefone(txtTelefone.getText().trim());
+                paciente.setTelefone(txtTelefone.getText().trim());
             }
 
             if (!txtEndereco.getText().trim().isEmpty()) {
-                pacienteSalvo.setEndereco(txtEndereco.getText().trim());
+                paciente.setEndereco(txtEndereco.getText().trim());
             }
 
-            // CORREÇÃO: Salva/atualiza os dados do paciente via API
-            LOGGER.info("Salvando paciente via API: " + pacienteSalvo.toString());
-            boolean sucessoSalvamento = pacienteService.atualizar(pacienteSalvo);
+            LOGGER.info("Salvando paciente via API: " + paciente.toString());
+            boolean sucessoSalvamento = pacienteService.atualizar(paciente);
 
             if (!sucessoSalvamento) {
                 JOptionPane.showMessageDialog(this, "Erro ao salvar dados do paciente!",
@@ -875,14 +877,14 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
             List<PacienteEspecialidade> listaPacienteEspecialidade = null;
 
             if (!especialidadesSelecionadas.isEmpty()) {
-                // Cria a lista de PacienteEspecialidade
-                listaPacienteEspecialidade = listaPacienteEspecialidade(pacienteSalvo.getId(), especialidadesSelecionadas, null);
+                // Cria a lista de PacienteEspecialidade - CORRIGIDO: usar paciente.getId()
+                listaPacienteEspecialidade = listaPacienteEspecialidade(paciente.getId(), especialidadesSelecionadas, null);
 
                 // Remove associações antigas e insere as novas via API
                 if (!listaPacienteEspecialidade.isEmpty()) {
                     try {
-                        // Primeiro, remove todas as associações existentes
-                        boolean especialidadesDeletadas = pacienteEspecialidadeService.deletarPorPacienteId(pacienteSalvo.getId());
+                        // Primeiro, remove todas as associações existentes - CORRIGIDO: usar paciente.getId()
+                        boolean especialidadesDeletadas = pacienteEspecialidadeService.deletarPorPacienteId(paciente.getId());
 
                         // Depois, insere as novas associações
                         boolean especialidadesSalvas = pacienteEspecialidadeService.inserirLista(listaPacienteEspecialidade);
@@ -906,9 +908,9 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                 }
             } else {
                 LOGGER.info("Nenhuma especialidade selecionada para o paciente.");
-                // Remove todas as associações se nenhuma especialidade foi selecionada
+                // Remove todas as associações se nenhuma especialidade foi selecionada - CORRIGIDO: usar paciente.getId()
                 try {
-                    pacienteEspecialidadeService.deletarPorPacienteId(pacienteSalvo.getId());
+                    pacienteEspecialidadeService.deletarPorPacienteId(paciente.getId());
                 } catch (Exception e) {
                     LOGGER.log(Level.WARNING, "Erro ao remover especialidades", e);
                 }
@@ -918,12 +920,18 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                     "Paciente atualizado com sucesso!",
                     "Sucesso", JOptionPane.INFORMATION_MESSAGE);
 
-            // CORREÇÃO: Buscar os dados atualizados da API para garantir consistência
-            Paciente pacienteAtualizado = pacienteService.buscarPorId(pacienteSalvo.getId());
+            // CORREÇÃO: Buscar os dados atualizados da API para garantir consistência - CORRIGIDO: usar paciente.getId()
+            Paciente pacienteAtualizado = pacienteService.buscarPorId(paciente.getId());
             if (pacienteAtualizado != null) {
-                // Atualiza a referência local e os campos
+                // Atualiza a referência local
                 this.paciente = pacienteAtualizado;
-                this.pacienteEspecialidades = listaPacienteEspecialidade;
+
+                // NOTIFICAR OS PAINÉIS DA ATUALIZAÇÃO
+                if (patientUpdateListener != null) {
+                    patientUpdateListener.onPatientUpdated(pacienteAtualizado);
+                }
+
+                // Atualizar campos do formulário com dados atualizados
                 preencherCamposComDadosTabela(pacienteAtualizado);
             }
 
@@ -965,11 +973,18 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                 boolean sucesso = pacienteService.deletar(paciente.getId());
                 
                 if (sucesso) {
+                    int pacienteId = paciente.getId(); // Salvar ID antes de limpar
+
                     JOptionPane.showMessageDialog(this, "Paciente excluído com sucesso!",
                             "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+
+                    // NOTIFICAR OS PAINÉIS DA EXCLUSÃO
+                    if (patientUpdateListener != null) {
+                        patientUpdateListener.onPatientDeleted(pacienteId);
+                    }
+
                     limparCampos();
                     this.paciente = new Paciente(); // Reset
-                    this.pacienteEspecialidades = null; // Reset
                 } else {
                     JOptionPane.showMessageDialog(this, "Erro ao excluir paciente!",
                             "Erro", JOptionPane.ERROR_MESSAGE);

@@ -2,12 +2,14 @@ package com.mycompany.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mycompany.client.dto.PacienteDTO;
+import com.mycompany.client.dto.PacienteEspecialidadeDTO;
+import com.mycompany.client.mapper.DtoMapper;
 import com.mycompany.listener.PacienteChangeListener;
 import com.mycompany.listener.PacienteEspecialidadeChangeListener;
 import com.mycompany.model.bean.Paciente;
 import com.mycompany.model.bean.PacienteEspecialidade;
 import jakarta.websocket.*;
-
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -20,7 +22,7 @@ import javax.swing.SwingUtilities;
 
 /**
  * Cliente WebSocket para receber notificações em tempo real da API
- * Versão melhorada com tratamento robusto de conexão e reconexão
+ * Versão adaptada para trabalhar com DTOs
  */
 @ClientEndpoint
 public class WebSocketClient {
@@ -238,21 +240,32 @@ public class WebSocketClient {
     
     /**
      * Processa notificações de mudanças em Paciente
+     * VERSÃO ADAPTADA PARA DTOs
      */
     private void processPacienteNotification(String action, JsonNode dataNode) {
         try {
             switch (action) {
                 case "created":
                     if (dataNode != null && !dataNode.isNull()) {
-                        Paciente novoPaciente = objectMapper.treeToValue(dataNode, Paciente.class);
-                        notifyPacienteAdded(novoPaciente);
+                        // Converte JSON para DTO e depois para modelo de domínio
+                        PacienteDTO pacienteDto = objectMapper.treeToValue(dataNode, PacienteDTO.class);
+                        Paciente novoPaciente = DtoMapper.toModel(pacienteDto);
+                        
+                        if (novoPaciente != null) {
+                            notifyPacienteAdded(novoPaciente);
+                        }
                     }
                     break;
                     
                 case "updated":
                     if (dataNode != null && !dataNode.isNull()) {
-                        Paciente pacienteAtualizado = objectMapper.treeToValue(dataNode, Paciente.class);
-                        notifyPacienteUpdated(pacienteAtualizado);
+                        // Converte JSON para DTO e depois para modelo de domínio
+                        PacienteDTO pacienteDto = objectMapper.treeToValue(dataNode, PacienteDTO.class);
+                        Paciente pacienteAtualizado = DtoMapper.toModel(pacienteDto);
+                        
+                        if (pacienteAtualizado != null) {
+                            notifyPacienteUpdated(pacienteAtualizado);
+                        }
                     }
                     break;
                     
@@ -273,21 +286,32 @@ public class WebSocketClient {
     
     /**
      * Processa notificações de mudanças em PacienteEspecialidade
+     * VERSÃO ADAPTADA PARA DTOs
      */
     private void processPacienteEspecialidadeNotification(String action, JsonNode dataNode) {
         try {
             switch (action) {
                 case "created":
                     if (dataNode != null && !dataNode.isNull()) {
-                        PacienteEspecialidade novaAssociacao = objectMapper.treeToValue(dataNode, PacienteEspecialidade.class);
-                        notifyPacienteEspecialidadeAdded(novaAssociacao);
+                        // Converte JSON para DTO e depois para modelo de domínio
+                        PacienteEspecialidadeDTO associacaoDto = objectMapper.treeToValue(dataNode, PacienteEspecialidadeDTO.class);
+                        PacienteEspecialidade novaAssociacao = DtoMapper.toModel(associacaoDto);
+                        
+                        if (novaAssociacao != null) {
+                            notifyPacienteEspecialidadeAdded(novaAssociacao);
+                        }
                     }
                     break;
                     
                 case "updated":
                     if (dataNode != null && !dataNode.isNull()) {
-                        PacienteEspecialidade associacaoAtualizada = objectMapper.treeToValue(dataNode, PacienteEspecialidade.class);
-                        notifyPacienteEspecialidadeUpdated(associacaoAtualizada);
+                        // Converte JSON para DTO e depois para modelo de domínio
+                        PacienteEspecialidadeDTO associacaoDto = objectMapper.treeToValue(dataNode, PacienteEspecialidadeDTO.class);
+                        PacienteEspecialidade associacaoAtualizada = DtoMapper.toModel(associacaoDto);
+                        
+                        if (associacaoAtualizada != null) {
+                            notifyPacienteEspecialidadeUpdated(associacaoAtualizada);
+                        }
                     }
                     break;
                     
@@ -295,6 +319,11 @@ public class WebSocketClient {
                     if (dataNode != null && dataNode.has("pacienteId") && dataNode.has("especialidadeId")) {
                         int pacienteId = dataNode.get("pacienteId").asInt();
                         int especialidadeId = dataNode.get("especialidadeId").asInt();
+                        notifyPacienteEspecialidadeDeleted(pacienteId, especialidadeId);
+                    } else if (dataNode != null && dataNode.has("paciente_id") && dataNode.has("especialidade_id")) {
+                        // Suporte para formato snake_case
+                        int pacienteId = dataNode.get("paciente_id").asInt();
+                        int especialidadeId = dataNode.get("especialidade_id").asInt();
                         notifyPacienteEspecialidadeDeleted(pacienteId, especialidadeId);
                     }
                     break;

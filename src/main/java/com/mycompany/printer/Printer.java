@@ -626,7 +626,7 @@ public class Printer {
 
         // Linha 2: PA, HGT, T, FR
         paramTable.addCell(criarCelulParametro("PA", 
-                obterValorOuVazio(paciente.getPaXmmhg()), 
+                obterValorOuVazio(paciente.getPaXMmhg()), 
                 fonteTitulo, fonteNormal));
 
         paramTable.addCell(criarCelulParametro("HGT", 

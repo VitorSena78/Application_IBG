@@ -913,7 +913,7 @@ public class PrinterV2 {
             String[] linha1 = {
                 ParametroHelper.formatarPeso(paciente.getPeso()),
                 ParametroHelper.formatarAltura(paciente.getAltura()),
-                ParametroHelper.formatarPA(paciente.getPaXmmhg()),
+                ParametroHelper.formatarPA(paciente.getPaXMmhg()),
                 ParametroHelper.formatarFC(paciente.getFcBpm())
             };
             

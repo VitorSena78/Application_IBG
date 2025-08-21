@@ -14,7 +14,7 @@ import javax.swing.JOptionPane;
 
 /**
  * Service para operações com Paciente através da API
- * Versão corrigida que usa DTOs e mapper
+ * Versão adaptada para trabalhar com DTOs
  */
 public class PacienteService {
     
@@ -36,17 +36,15 @@ public class PacienteService {
         }
         
         try {
-            // Converte o modelo para DTO
+            // Converte o modelo para DTO antes de enviar
             PacienteDTO pacienteDto = DtoMapper.toDto(paciente);
             
-            // Envia para a API
-            PacienteDTO pacienteRetornadoDto = apiClient.post(PACIENTE_ENDPOINT, pacienteDto, PacienteDTO.class);
+            // Envia o DTO para a API
+            PacienteDTO pacienteDtoRetornado = apiClient.post(PACIENTE_ENDPOINT, pacienteDto, PacienteDTO.class);
             
-            if (pacienteRetornadoDto != null && pacienteRetornadoDto.getId() != null) {
-                // Converte o DTO de volta e atualiza o ID no objeto original
-                Paciente pacienteRetornado = DtoMapper.toModel(pacienteRetornadoDto);
-                paciente.setId(pacienteRetornado.getId());
-                
+            if (pacienteDtoRetornado != null && pacienteDtoRetornado.getId() != null) {
+                // Atualiza o ID no objeto original
+                paciente.setId(pacienteDtoRetornado.getId());
                 JOptionPane.showMessageDialog(null, "Paciente salvo com sucesso");
                 LOGGER.info("Paciente inserido com sucesso: " + paciente.getNome());
                 return true;
@@ -65,11 +63,13 @@ public class PacienteService {
      */
     public List<Paciente> listarTodos() {
         try {
-            // Busca DTOs da API
-            List<PacienteDTO> pacientesDto = apiClient.getList(PACIENTE_ENDPOINT, new TypeReference<List<PacienteDTO>>(){});
+            String endpoint = PACIENTE_ENDPOINT + "/todos";
             
-            // Converte DTOs para modelos
-            List<Paciente> pacientes = DtoMapper.toModelList(pacientesDto);
+            // Recebe DTOs da API
+            List<PacienteDTO> pacienteDtos = apiClient.getList(endpoint, new TypeReference<List<PacienteDTO>>(){});
+            
+            // Converte DTOs para modelos de domínio
+            List<Paciente> pacientes = DtoMapper.toModelList(pacienteDtos);
             
             LOGGER.info("Listados " + pacientes.size() + " pacientes");
             return pacientes;
@@ -91,19 +91,17 @@ public class PacienteService {
         }
         
         try {
-            // Busca DTO da API
+            // Recebe DTO da API
             PacienteDTO pacienteDto = apiClient.get(PACIENTE_ENDPOINT + "/" + id, PacienteDTO.class);
             
-            // Converte DTO para modelo
-            Paciente paciente = DtoMapper.toModel(pacienteDto);
-            
-            if (paciente != null) {
+            if (pacienteDto != null) {
                 LOGGER.info("Paciente encontrado: ID " + id);
+                // Converte DTO para modelo de domínio
+                return DtoMapper.toModel(pacienteDto);
             } else {
                 LOGGER.info("Paciente não encontrado: ID " + id);
+                return null;
             }
-            
-            return paciente;
             
         } catch (ApiException e) {
             LOGGER.log(Level.SEVERE, "Erro ao buscar paciente por ID: " + id, e);
@@ -122,11 +120,11 @@ public class PacienteService {
         try {
             String endpoint = PACIENTE_ENDPOINT + "/buscar?nome=" + nome.trim();
             
-            // Busca DTOs da API
-            List<PacienteDTO> pacientesDto = apiClient.getList(endpoint, new TypeReference<List<PacienteDTO>>(){});
+            // Recebe DTOs da API
+            List<PacienteDTO> pacienteDtos = apiClient.getList(endpoint, new TypeReference<List<PacienteDTO>>(){});
             
-            // Converte DTOs para modelos
-            List<Paciente> pacientes = DtoMapper.toModelList(pacientesDto);
+            // Converte DTOs para modelos de domínio
+            List<Paciente> pacientes = DtoMapper.toModelList(pacienteDtos);
             
             LOGGER.info("Encontrados " + pacientes.size() + " pacientes com nome contendo: " + nome);
             return pacientes;
@@ -148,11 +146,14 @@ public class PacienteService {
         try {
             String endpoint = PACIENTE_ENDPOINT + "/cpf/" + cpf.trim();
             
-            // Busca DTO da API
+            // Recebe DTO da API
             PacienteDTO pacienteDto = apiClient.get(endpoint, PacienteDTO.class);
             
-            // Converte DTO para modelo
-            return DtoMapper.toModel(pacienteDto);
+            if (pacienteDto != null) {
+                // Converte DTO para modelo de domínio
+                return DtoMapper.toModel(pacienteDto);
+            }
+            return null;
             
         } catch (ApiException e) {
             LOGGER.log(Level.SEVERE, "Erro ao buscar paciente por CPF: " + cpf, e);
@@ -171,19 +172,23 @@ public class PacienteService {
         }
 
         try {
-            // Converte modelo para DTO
+            String endpoint = PACIENTE_ENDPOINT + "/" + paciente.getId();
+            
+            // Converte o modelo para DTO antes de enviar
             PacienteDTO pacienteDto = DtoMapper.toDto(paciente);
             
-            String endpoint = PACIENTE_ENDPOINT + "/" + paciente.getId();
-            PacienteDTO pacienteAtualizadoDto = apiClient.put(endpoint, pacienteDto, PacienteDTO.class);
+            // Envia o DTO para a API
+            PacienteDTO pacienteDtoAtualizado = apiClient.put(endpoint, pacienteDto, PacienteDTO.class);
 
-            if (pacienteAtualizadoDto != null) {
-                // Converte DTO de volta para modelo e copia dados atualizados
-                Paciente pacienteAtualizado = DtoMapper.toModel(pacienteAtualizadoDto);
-                copiarDados(pacienteAtualizado, paciente);
-                
+            if (pacienteDtoAtualizado != null) {
                 LOGGER.info("Paciente atualizado: ID " + paciente.getId());
                 JOptionPane.showMessageDialog(null, "Paciente atualizado com sucesso");
+                
+                // Converte o DTO retornado para modelo e copia os dados atualizados
+                Paciente pacienteAtualizado = DtoMapper.toModel(pacienteDtoAtualizado);
+                if (pacienteAtualizado != null) {
+                    copiarDados(pacienteAtualizado, paciente);
+                }
                 return true;
             } else {
                 LOGGER.warning("Nenhum paciente encontrado para atualizar: ID " + paciente.getId());
@@ -197,14 +202,8 @@ public class PacienteService {
         }
     }
     
-    /**
-     * Método auxiliar para copiar dados do paciente atualizado
-     */
+    // Método auxiliar para copiar dados
     private void copiarDados(Paciente origem, Paciente destino) {
-        if (origem == null || destino == null) {
-            return;
-        }
-        
         destino.setId(origem.getId());
         destino.setNome(origem.getNome());
         destino.setCpf(origem.getCpf());
@@ -214,7 +213,7 @@ public class PacienteService {
         destino.setSus(origem.getSus());
         destino.setTelefone(origem.getTelefone());
         destino.setEndereco(origem.getEndereco());
-        destino.setPaXmmhg(origem.getPaXmmhg());
+        destino.setPaXMmhg(origem.getPaXMmhg());
         destino.setFcBpm(origem.getFcBpm());
         destino.setFrIbpm(origem.getFrIbpm());
         destino.setTemperaturaC(origem.getTemperaturaC());
