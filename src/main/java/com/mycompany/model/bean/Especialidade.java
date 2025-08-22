@@ -14,8 +14,10 @@ public class Especialidade {
         // Construtor padrão
     }
 
-    public Especialidade(String nome) {
+    public Especialidade(String nome, int atendimentosRestantesHoje, int atendimentosTotaisHoje) {
         this.nome = nome;
+        this.atendimentosRestantesHoje = atendimentosRestantesHoje;
+        this.atendimentosTotaisHoje = atendimentosTotaisHoje;
     }
   
     // Getters e Setters
@@ -41,7 +43,7 @@ public class Especialidade {
     }
 
     public void setAtendimentosRestantesHoje(int atendimentosRestantesHoje) {
-        this.atendimentosRestantesHoje = atendimentosRestantesHoje;
+        this.atendimentosRestantesHoje = Math.max(0, atendimentosRestantesHoje);
     }
 
     public int getAtendimentosTotaisHoje() {
@@ -49,12 +51,14 @@ public class Especialidade {
     }
 
     public void setAtendimentosTotaisHoje(int atendimentosTotaisHoje) {
-        this.atendimentosTotaisHoje = atendimentosTotaisHoje;
+        this.atendimentosTotaisHoje = Math.max(0, atendimentosTotaisHoje);
     }
     
     //Calcula o número do próximo atendimento
     public int calcularNumeroProximoAtendimento() {
-        return (atendimentosTotaisHoje - atendimentosRestantesHoje + 1);
+        // Validação para evitar valores negativos
+        int proximo = (atendimentosTotaisHoje - atendimentosRestantesHoje + 1);
+        return Math.max(1, proximo);
     }
     
     //Verifica se ainda há atendimentos disponíveis
@@ -69,7 +73,12 @@ public class Especialidade {
 
     @Override
     public String toString() {
-        return "Especialidade{" + "id=" + id + ", nome=" + nome + ", atendimentosRestantesHoje=" + atendimentosRestantesHoje + ", atendimentosTotaisHoje=" + atendimentosTotaisHoje + '}';
+        return "Especialidade{" + 
+               "id=" + id + 
+               ", nome='" + getNome() + "'" + 
+               ", atendimentosRestantesHoje=" + atendimentosRestantesHoje + 
+               ", atendimentosTotaisHoje=" + atendimentosTotaisHoje + 
+               '}';
     }
   
 }

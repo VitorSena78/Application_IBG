@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.kafka.common.errors.ApiException;
@@ -38,10 +39,8 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     // Services que substituem os DAOs
     private PacienteService pacienteService;
     private PacienteEspecialidadeService pacienteEspecialidadeService;
-    private EspecialidadeService especialidadeService;
     
     // Dados
-    private List<Paciente> listaPacientes;
     private Paciente paciente = new Paciente();
     private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
     private List<Especialidade> especialidades;
@@ -124,10 +123,8 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         // CORREÇÃO: Inicializar services ANTES de initComponents
         this.pacienteService = pacienteService;
         this.pacienteEspecialidadeService = pacienteEspecialidadeService;
-        this.especialidadeService = especialidadeService;
         this.especialidades = especialidades;
         
-        listaPacientes = new ArrayList<>();
         
         initComponents();
         
@@ -274,7 +271,6 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         lblEspecialidades.setFont(new java.awt.Font("Arial", 1, 12));
         lblEspecialidades.setText("Especialidades Médicas:");
 
-        // *** CRIAR A LISTA DE ESPECIALIDADES ANTES DO LAYOUT ***
         criarListaEspecialidades();
 
         // Configurar título
@@ -498,6 +494,14 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
 
     // MÉTODOS ATUALIZADOS PARA USAR JLIST
     private void setEspecialidadesSelecionadas(List<PacienteEspecialidade> pacienteEspecialidades) {
+        System.out.println("=== setEspecialidadesSelecionadas ===");
+
+        // CORREÇÃO: Verificar se a lista de especialidades foi criada
+        if (modeloLista == null) {
+            System.out.println("⚠️ modeloLista é NULL - não é possível selecionar especialidades");
+            return;
+        }
+
         // Limpar todas as seleções primeiro
         limparEspecialidades();
 
@@ -506,19 +510,32 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
             return;
         }
 
+        int especialidadesSelecionadas = 0;
+
         // Selecionar itens na lista baseado nos IDs das especialidades
         for (PacienteEspecialidade pe : pacienteEspecialidades) {
+            boolean encontrada = false;
             for (int i = 0; i < modeloLista.getSize(); i++) {
                 EspecialidadeCheckBox item = modeloLista.getElementAt(i);
                 if (item.getEspecialidade().getId() == pe.getEspecialidadeId()) {
                     item.setSelecionada(true);
+                    especialidadesSelecionadas++;
+                    encontrada = true;
                     break;
                 }
             }
+
+            if (!encontrada) {
+                System.out.println("⚠️ Especialidade ID " + pe.getEspecialidadeId() + " não encontrada na lista disponível");
+            }
         }
-        
+
         // Atualizar a visualização da lista
-        listaEspecialidades.repaint();
+        if (listaEspecialidades != null) {
+            listaEspecialidades.repaint();
+        }
+
+        System.out.println("Especialidades selecionadas: " + especialidadesSelecionadas + "/" + pacienteEspecialidades.size());
     }
     
     // Método para obter especialidades selecionadas da JList
@@ -604,29 +621,53 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     
     //Método para preencher os campos do formulário com dados da tabela
     public void preencherCamposComDadosTabela(Paciente patientData) {
+        System.out.println("=== preencherCamposComDadosTabela ===");
+        System.out.println("Paciente: " + (patientData != null ? patientData.getNome() : "NULL"));
+
+        // CORREÇÃO: Verificar se as especialidades do paciente estão disponíveis
+        if (pacienteEspecialidades != null) {
+            System.out.println("Especialidades do paciente disponíveis: " + pacienteEspecialidades.size());
+        } else {
+            System.out.println("⚠️ pacienteEspecialidades é NULL - pode causar problemas na exibição");
+        }
+
         if (patientData != null) {
             // Preencher os campos com os dados da tabela
-            txtNome.setText(patientData.getNome() != null ? patientData.getNome().toString() : "");
-            txtDataNascimento.setText(patientData.getDataNascimento() != null ? patientData.getDataNascimento().toString() : "");
+            txtNome.setText(patientData.getNome() != null ? patientData.getNome() : "");
+            txtDataNascimento.setText(patientData.getDataNascimento() != null ? patientData.getDataNascimento() : "");
             txtIdade.setText(patientData.getIdade() != null ? patientData.getIdade().toString() : "");
-            txtNomeDaMae.setText(patientData.getNomeDaMae() != null ? patientData.getNomeDaMae().toString() : "");
-            txtCpf.setText(patientData.getCpf() != null ? patientData.getCpf().toString() : "");
-            txtSus.setText(patientData.getSus() != null ? patientData.getSus().toString() : "");
-            txtTelefone.setText(patientData.getTelefone() != null ? patientData.getTelefone().toString() : "");
-            txtEndereco.setText(patientData.getEndereco() != null ? patientData.getEndereco().toString() : "");
-            
-            // Verifica se pacienteEspecialidades recebeu as especialidades para esse paciente selecionado
-            if (pacienteEspecialidades != null) {
-                setEspecialidadesSelecionadas(pacienteEspecialidades);
+            txtNomeDaMae.setText(patientData.getNomeDaMae() != null ? patientData.getNomeDaMae() : "");
+            txtCpf.setText(patientData.getCpf() != null ? patientData.getCpf() : "");
+            txtSus.setText(patientData.getSus() != null ? patientData.getSus() : "");
+            txtTelefone.setText(patientData.getTelefone() != null ? patientData.getTelefone() : "");
+            txtEndereco.setText(patientData.getEndereco() != null ? patientData.getEndereco() : "");
+
+            // CORREÇÃO: Verificar estado da lista de especialidades antes de limpar
+            if (modeloLista == null) {
+                System.out.println("⚠️ modeloLista é NULL - criando lista de especialidades");
+                criarListaEspecialidades();
             }
 
-            // E modificar o método aplicarBloqueioCondicional() para incluir:
+            // Sempre limpar especialidades antes de configurar as novas
+            limparEspecialidades();
+
+            // Configurar especialidades apenas se a lista não estiver nula
+            if (pacienteEspecialidades != null && !pacienteEspecialidades.isEmpty()) {
+                setEspecialidadesSelecionadas(pacienteEspecialidades);
+                System.out.println("✅ Especialidades configuradas: " + pacienteEspecialidades.size());
+            } else {
+                System.out.println("ℹ️ Nenhuma especialidade para configurar");
+            }
+
+            // Aplicar bloqueios condicionais
             aplicarBloqueioCondicionalEspecialidades();
-            
             aplicarBloqueioCondicional();
-            modoEdicao = false; // Garantir que não está em modo edição
+            modoEdicao = false;
+
+            System.out.println("✅ Campos preenchidos com sucesso");
         }
     }
+
     
     private void aplicarBloqueioCondicional() {
         JTextField[] campos = {
@@ -1010,7 +1051,132 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     }
 
     // Método para limpar campos
-    private void limparCampos() {
+    public void limparCampos() {
+        System.out.println("=== Limpando campos do FormularioDados2P ===");
+
+        // Executar limpeza na EDT para garantir thread safety
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Limpar campos de texto
+                if (txtNome != null) txtNome.setText("");
+                if (txtDataNascimento != null) txtDataNascimento.setText("");
+                if (txtIdade != null) txtIdade.setText("");
+                if (txtNomeDaMae != null) txtNomeDaMae.setText("");
+                if (txtCpf != null) txtCpf.setText("");
+                if (txtSus != null) txtSus.setText("");
+                if (txtTelefone != null) txtTelefone.setText("");
+                if (txtEndereco != null) txtEndereco.setText("");
+
+                System.out.println("✅ Campos de texto limpos");
+
+                // CORREÇÃO PRINCIPAL: Limpar especialidades de forma mais robusta
+                limparEspecialidadesCompleto();
+
+                // Resetar variáveis de estado de forma thread-safe
+                synchronized (this) {
+                    this.paciente = new Paciente();
+                    this.pacienteEspecialidades = new ArrayList<>();
+                    System.out.println("✅ Variáveis de estado resetadas");
+                }
+
+                // Resetar estado dos campos e formulário
+                modoEdicao = false;
+                aplicarBloqueioCondicional();
+                aplicarBloqueioCondicionalEspecialidades();
+
+                // Resetar botão editar
+                if (btnEditar != null) {
+                    btnEditar.setText("Editar");
+                    btnEditar.setBackground(new Color(255, 152, 0));
+                }
+
+                // NOVA ADIÇÃO: Forçar repaint de todos os componentes
+                revalidate();
+                repaint();
+
+                System.out.println("✅ Campos limpos com sucesso no FormularioDados2P");
+
+            } catch (Exception e) {
+                System.err.println("❌ Erro ao limpar campos: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
+    }
+    
+    //  Limpeza robusta das especialidades
+    private void limparEspecialidadesCompleto() {
+        try {
+            System.out.println("=== Iniciando limpeza completa das especialidades ===");
+
+            if (modeloLista != null) {
+                System.out.println("Limpando " + modeloLista.getSize() + " especialidades...");
+
+                // Limpar todas as seleções
+                for (int i = 0; i < modeloLista.getSize(); i++) {
+                    EspecialidadeCheckBox item = modeloLista.getElementAt(i);
+                    if (item != null) {
+                        item.setSelecionada(false);
+                    }
+                }
+
+                // Forçar repaint da lista
+                if (listaEspecialidades != null) {
+                    listaEspecialidades.clearSelection();
+                    listaEspecialidades.revalidate();
+                    listaEspecialidades.repaint();
+
+                    // NOVA ADIÇÃO: Forçar repaint do scroll pane também
+                    if (scrollEspecialidades != null) {
+                        scrollEspecialidades.revalidate();
+                        scrollEspecialidades.repaint();
+                    }
+                }
+
+                System.out.println("✅ Especialidades limpas: " + modeloLista.getSize() + " itens processados");
+            } else {
+                System.out.println("ℹ️ modeloLista é null - não há especialidades para limpar");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Erro ao limpar especialidades: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    
+    // Método para atualizar a lista de especialidades (caso seja necessário recarregar do banco)
+    public void atualizarEspecialidades(List<Especialidade> novasEspecialidades) {
+        System.out.println("=== atualizarEspecialidades FormularioDados2P ===");
+        System.out.println("Especialidades recebidas: " + (novasEspecialidades != null ? novasEspecialidades.size() : "NULL"));
+
+        this.especialidades = novasEspecialidades;
+
+        // Limpar estado atual ANTES de recriar a lista
+        limparEstadoCompleto();
+
+        // Recriar a lista de especialidades
+        criarListaEspecialidades();
+
+        //  Resetar estado dos campos após recriar a lista
+        modoEdicao = false;
+        aplicarBloqueioCondicional();
+        aplicarBloqueioCondicionalEspecialidades();
+        btnEditar.setText("Editar");
+        btnEditar.setBackground(new Color(255, 152, 0));
+
+        // Reposicionar o scrollPane no layout se necessário
+        if (scrollEspecialidades != null) {
+            scrollEspecialidades.revalidate();
+            scrollEspecialidades.repaint();
+        }
+
+        System.out.println("✅ Especialidades atualizadas e estado resetado");
+    }
+    
+    // Limpa completamente o estado do formulário
+    private void limparEstadoCompleto() {
+        System.out.println("=== Limpando estado completo do FormularioDados2P ===");
+
+        // Limpar campos de texto
         txtNome.setText("");
         txtDataNascimento.setText("");
         txtIdade.setText("");
@@ -1019,52 +1185,159 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         txtSus.setText("");
         txtTelefone.setText("");
         txtEndereco.setText("");
-        limparEspecialidades();
-        
-        // Resetar estado dos campos
-        modoEdicao = false;
-        aplicarBloqueioCondicional();
-        aplicarBloqueioCondicionalEspecialidades();
-        btnEditar.setText("Editar");
-        btnEditar.setBackground(new Color(255, 152, 0));
+
+        // Limpar especialidades da lista atual
+        if (modeloLista != null) {
+            limparEspecialidades();
+        }
+
+        // Resetar variáveis de estado
+        this.paciente = new Paciente();
+        this.pacienteEspecialidades = new ArrayList<>();
+
+        System.out.println("✅ Estado completo limpo");
     }
 
-    
-    // Método para atualizar a lista de especialidades (caso seja necessário recarregar do banco)
-    public void atualizarEspecialidades(List<Especialidade> novasEspecialidades) {
+    // NOVO MÉTODO: Atualizar especialidades SEM limpar estado atual
+    public void atualizarEspecialidadesSemLimpar(List<Especialidade> novasEspecialidades) {
+        System.out.println("=== atualizarEspecialidadesSemLimpar FormularioDados2P ===");
+        System.out.println("Especialidades recebidas: " + (novasEspecialidades != null ? novasEspecialidades.size() : "NULL"));
+
         this.especialidades = novasEspecialidades;
+
+        // SALVAR estado atual das seleções ANTES de recriar a lista
+        List<Integer> especialidadesSelecionadasIds = new ArrayList<>();
+        if (modeloLista != null) {
+            for (int i = 0; i < modeloLista.getSize(); i++) {
+                EspecialidadeCheckBox item = modeloLista.getElementAt(i);
+                if (item.isSelecionada()) {
+                    especialidadesSelecionadasIds.add(item.getEspecialidade().getId());
+                }
+            }
+        }
+
+        System.out.println("Estado atual salvo: " + especialidadesSelecionadasIds.size() + " especialidades selecionadas");
+
+        // Recriar a lista de especialidades
         criarListaEspecialidades();
-        
+
+        // RESTAURAR as seleções que estavam ativas
+        if (!especialidadesSelecionadasIds.isEmpty()) {
+            for (int i = 0; i < modeloLista.getSize(); i++) {
+                EspecialidadeCheckBox item = modeloLista.getElementAt(i);
+                if (especialidadesSelecionadasIds.contains(item.getEspecialidade().getId())) {
+                    item.setSelecionada(true);
+                }
+            }
+
+            if (listaEspecialidades != null) {
+                listaEspecialidades.repaint();
+            }
+
+            System.out.println("Estado restaurado: " + especialidadesSelecionadasIds.size() + " especialidades re-selecionadas");
+        }
+
         // Reposicionar o scrollPane no layout se necessário
-        scrollEspecialidades.revalidate();
-        scrollEspecialidades.repaint();
+        if (scrollEspecialidades != null) {
+            scrollEspecialidades.revalidate();
+            scrollEspecialidades.repaint();
+        }
+
+        System.out.println("✅ Especialidades atualizadas mantendo seleções");
     }
 
     @Override
     public void onPatientSelected(Paciente patientData, List<PacienteEspecialidade> pacienteEspecialidadeData) {
-        paciente = patientData;
-        pacienteEspecialidades = pacienteEspecialidadeData;
-        preencherCamposComDadosTabela(patientData);
+        System.out.println("=== onPatientSelected FormularioDados2P ===");
+        System.out.println("Paciente: " + (patientData != null ? patientData.getNome() + " (ID: " + patientData.getId() + ")" : "NULL"));
+        System.out.println("Especialidades recebidas: " + (pacienteEspecialidadeData != null ? pacienteEspecialidadeData.size() : "0"));
+
+        if (patientData != null) {
+            // Verificar se é um paciente diferente do atual
+            boolean mesmoPaciente = (this.paciente != null && 
+                                   this.paciente.getId() != null && 
+                                   patientData.getId() != null &&
+                                   this.paciente.getId().equals(patientData.getId()));
+
+            if (!mesmoPaciente) {
+                // Paciente diferente - limpar estado anterior
+                limparEstadoAnterior();
+                System.out.println("Paciente diferente detectado - estado anterior limpo");
+            } else {
+                System.out.println("Mesmo paciente - mantendo estado atual");
+            }
+
+            this.paciente = patientData;
+            this.pacienteEspecialidades = pacienteEspecialidadeData != null ? 
+                new ArrayList<>(pacienteEspecialidadeData) : new ArrayList<>();
+
+            // Preencher campos com os dados recebidos
+            preencherCamposComDadosTabela(patientData);
+
+            System.out.println("✅ Paciente e especialidades configurados no formulário");
+        } else {
+            // Limpar formulário quando não há seleção
+            limparCampos();
+            System.out.println("✅ Formulário limpo - nenhum paciente selecionado");
+        }
     }
     
     @Override
     public void onPatientSelected(Paciente patientData) {
-        // Implementação para compatibilidade - busca especialidades via API
-        paciente = patientData;
-        
+        System.out.println("=== onPatientSelected (sem especialidades) FormularioDados2P ===");
+        System.out.println("Paciente: " + (patientData != null ? patientData.getNome() + " (ID: " + patientData.getId() + ")" : "NULL"));
+
+        // limpar estado anterior primeiro
+        limparEstadoAnterior();
+
         if (patientData != null && patientData.getId() > 0) {
-            try {
-                // Busca especialidades do paciente via API
-                pacienteEspecialidades = pacienteEspecialidadeService.buscarPorPacienteId(patientData.getId());
-            } catch (ApiException e) {
-                LOGGER.log(Level.WARNING, "Erro ao buscar especialidades do paciente", e);
-                pacienteEspecialidades = new ArrayList<>();
-            }
+            this.paciente = patientData;
+
+            // Buscar especialidades via API de forma assíncrona
+            CompletableFuture.supplyAsync(() -> {
+                try {
+                    return pacienteEspecialidadeService.buscarPorPacienteId(patientData.getId());
+                } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "Erro ao buscar especialidades do paciente via API", e);
+                    return new ArrayList<PacienteEspecialidade>();
+                }
+            }).thenAcceptAsync(especialidades -> {
+                // Executa na EDT
+                SwingUtilities.invokeLater(() -> {
+                    // Verificar se ainda é o mesmo paciente selecionado
+                    if (this.paciente != null && this.paciente.getId().equals(patientData.getId())) {
+                        this.pacienteEspecialidades = especialidades;
+                        preencherCamposComDadosTabela(patientData);
+                        System.out.println("✅ Especialidades carregadas via API: " + especialidades.size());
+                    } else {
+                        System.out.println("ℹ️ Paciente mudou durante carregamento - ignorando resultado");
+                    }
+                });
+            });
         } else {
-            pacienteEspecialidades = new ArrayList<>();
+            // Limpar formulário quando não há seleção válida
+            SwingUtilities.invokeLater(() -> {
+                limparCampos();
+                System.out.println("✅ Formulário limpo - paciente inválido");
+            });
         }
-        
-        preencherCamposComDadosTabela(patientData);
+    }
+    
+    // Limpa especificamente o estado anterior
+    private void limparEstadoAnterior() {
+        System.out.println("=== Limpando estado anterior ===");
+
+        //  Limpar as especialidades selecionadas antes de carregar novo paciente
+        limparEspecialidades();
+
+        // Resetar variáveis de estado
+        this.paciente = new Paciente();
+        this.pacienteEspecialidades = new ArrayList<>();
+
+        // Resetar modo edição
+        modoEdicao = false;
+
+        System.out.println("✅ Estado anterior limpo");
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

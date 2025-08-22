@@ -95,8 +95,8 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
                 // Inicializar ApiManager
                 inicializarApiManager();
 
-                // Carregar dados iniciais
-                carregarDadosIniciais();
+                // Carregar dados iniciais de forma sincronizada
+                carregarDadosCompletos();
 
                 // Registrar listeners para notificações em tempo real
                 registrarListeners();
@@ -238,56 +238,90 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         }
     }
     
-    /**
-     * Carrega dados iniciais do sistema
-     */
-    private void carregarDadosIniciais() {
-        // Executar carregamento em background para não bloquear a UI
-        CompletableFuture.runAsync(() -> {
-            try {
-                carregarDados();
-                
-                debugDadosCarregados();
-                
-                SwingUtilities.invokeLater(() -> {
-                    showNotification("📊 Dados carregados com sucesso");
-                });
-                
-            } catch (Exception e) {
-                LOGGER.log(Level.SEVERE, "Erro ao carregar dados iniciais", e);
-                SwingUtilities.invokeLater(() -> {
-                    showNotification("❌ Erro ao carregar dados: " + e.getMessage());
-                });
+    //Carrega dados de forma completa e sincronizada
+    private void carregarDadosCompletos() {
+        try {
+            LOGGER.info("🔄 Iniciando carregamento completo dos dados...");
+
+            if (!isApiDisponivel()) {
+                LOGGER.warning("⚠️ API não disponível - usando dados em cache ou modo offline");
+                return;
             }
-        });
+
+            // Carregar todos os dados de forma sequencial
+            LOGGER.info("Carregando pacientes...");
+            List<Paciente> novosPacientes = pacienteService.listarTodos();
+            LOGGER.info("✓ Pacientes carregados: " + novosPacientes.size());
+
+            LOGGER.info("Carregando especialidades...");
+            List<Especialidade> novasEspecialidades = especialidadeService.listarTodas();
+            LOGGER.info("✓ Especialidades carregadas: " + novasEspecialidades.size());
+
+            LOGGER.info("Carregando associações paciente-especialidade...");
+            List<PacienteEspecialidade> novasAssociacoes = pacienteEspecialidadeService.listarTodos();
+            LOGGER.info("✓ Associações carregadas: " + novasAssociacoes.size());
+
+            //  Validar consistência dos dados
+            validarConsistenciaDados(novosPacientes, novasEspecialidades, novasAssociacoes);
+
+            //  Atualizar cache local de forma atômica
+            synchronized (this) {
+                synchronized (pacientes) {
+                    pacientes.clear();
+                    pacientes.addAll(novosPacientes);
+                }
+                
+                synchronized (especialidades) {
+                    especialidades.clear();
+                    especialidades.addAll(novasEspecialidades);
+                }
+                
+                synchronized (pacienteEspecialidades) {
+                    pacienteEspecialidades.clear();
+                    pacienteEspecialidades.addAll(novasAssociacoes);
+                }
+            }
+
+            LOGGER.info("✅ Dados carregados com sucesso: " + 
+                       pacientes.size() + " pacientes, " + 
+                       especialidades.size() + " especialidades, " + 
+                       pacienteEspecialidades.size() + " associações");
+
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Erro ao carregar dados completos", e);
+            throw new RuntimeException("Falha no carregamento completo de dados", e);
+        }
     }
     
-    public void debugDadosCarregados() {
-        System.out.println("\n=== DEBUG DADOS CARREGADOS ===");
-
-        synchronized (pacientes) {
-            System.out.println("Total de pacientes: " + pacientes.size());
-
-            for (int i = 0; i < Math.min(3, pacientes.size()); i++) {
-                Paciente p = pacientes.get(i);
-                System.out.println("\nPaciente " + (i+1) + ":");
-                System.out.println("  ID: " + p.getId());
-                System.out.println("  Nome: " + p.getNome());
-
-                // Verificar se existe campo pressão
-                try {
-                    System.out.println("  Pressão (getPressao): " + p.getPaXMmhg());
-
-                } catch (Exception e) {
-                    System.out.println("  ERRO ao acessar pressão: " + e.getMessage());
-                }
-
-                // Debug completo do objeto
-                System.out.println("  Objeto completo: " + p.toString());
+    //Valida consistência dos dados carregados
+    private void validarConsistenciaDados(List<Paciente> pacientes, 
+                                         List<Especialidade> especialidades, 
+                                         List<PacienteEspecialidade> associacoes) {
+        
+        LOGGER.info("🔍 Validando consistência dos dados...");
+        
+        // Validar se associações referenciam pacientes e especialidades existentes
+        int associacoesInvalidas = 0;
+        
+        for (PacienteEspecialidade assoc : associacoes) {
+            boolean pacienteExiste = pacientes.stream()
+                .anyMatch(p -> p.getId() != null && p.getId().equals(assoc.getPacienteId()));
+            
+            boolean especialidadeExiste = especialidades.stream()
+                .anyMatch(e -> e.getId() != null && e.getId().equals(assoc.getEspecialidadeId()));
+            
+            if (!pacienteExiste || !especialidadeExiste) {
+                associacoesInvalidas++;
+                LOGGER.warning("Associação inválida encontrada: Paciente=" + 
+                             assoc.getPacienteId() + ", Especialidade=" + assoc.getEspecialidadeId());
             }
         }
-
-        System.out.println("=== FIM DEBUG ===\n");
+        
+        if (associacoesInvalidas > 0) {
+            LOGGER.warning("⚠️ Encontradas " + associacoesInvalidas + " associações com referências inválidas");
+        } else {
+            LOGGER.info("✅ Validação de consistência aprovada");
+        }
     }
     
     /**
@@ -354,53 +388,55 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     
     @Override
     public void onSaudeSelected() {
+        if (inicializando) return;
+        
         SwingUtilities.invokeLater(() -> {
             try {
-                System.out.println("=== INICIANDO onSaudeSelected ===");
-
-                // Debug estado atual
-                System.out.println("Pacientes disponíveis: " + (pacientes != null ? pacientes.size() : "NULL"));
-                System.out.println("Especialidades disponíveis: " + (especialidades != null ? especialidades.size() : "NULL"));
+                LOGGER.info("=== INICIANDO onSaudeSelected ===");
 
                 // Verificar se temos dados
                 if (pacientes == null || pacientes.isEmpty()) {
-                    System.out.println("ATENÇÃO: Sem pacientes para exibir!");
+                    LOGGER.warning("ATENÇÃO: Sem pacientes para exibir!");
                     showNotification("⚠️ Nenhum paciente encontrado. Carregando dados...");
 
                     // Tentar carregar dados se não temos
                     if (isApiDisponivel()) {
-                        carregarDados();
+                        carregarDadosCompletos();
                     }
                 }
 
-                // Criar painéis
-                System.out.println("Criando PainelSaude2...");
-                painelSaudeAtivo = new PainelSaude2(new ArrayList<>(pacientes));
+                // Criar painéis com cópias thread-safe dos dados
+                List<Paciente> pacientesParaPainel;
+                List<Especialidade> especialidadesParaFormulario;
+                
+                synchronized (this) {
+                    pacientesParaPainel = new ArrayList<>(pacientes);
+                    especialidadesParaFormulario = new ArrayList<>(especialidades);
+                }
 
-                System.out.println("Criando FormularioSaude2P...");
+                LOGGER.info("Criando PainelSaude2 com " + pacientesParaPainel.size() + " pacientes...");
+                painelSaudeAtivo = new PainelSaude2(pacientesParaPainel);
+
+                LOGGER.info("Criando FormularioSaude2P com " + especialidadesParaFormulario.size() + " especialidades...");
                 formularioSaudeAtivo = new FormularioSaude2P(
                     pacienteService, 
                     pacienteEspecialidadeService, 
                     especialidadeService, 
-                    new ArrayList<>(especialidades)
+                    especialidadesParaFormulario
                 );
 
-                // Forçar tamanho
+                // Configurar componentes
                 if (formularioSaudeAtivo != null) {
                     formularioSaudeAtivo.setPreferredSize(new Dimension(500, 640));
-                }
-
-                // **CORREÇÃO: Conectar os listeners ANTES de atualizar a interface**
-                if (formularioSaudeAtivo != null) {
                     formularioSaudeAtivo.setPatientUpdateListener(this);
                 }
+                
                 if (painelSaudeAtivo != null && formularioSaudeAtivo != null) {
                     painelSaudeAtivo.setPatientSelectionListener(formularioSaudeAtivo);
-                    System.out.println("Painéis conectados com sucesso");
+                    LOGGER.info("Painéis conectados com sucesso");
                 }
 
                 // Atualizar interface
-                System.out.println("Atualizando interface...");
                 refreshContentPainel(painelSaudeAtivo);
                 refreshContentFormulario(formularioSaudeAtivo);
 
@@ -415,22 +451,10 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
                     content2.repaint();
                 }
 
-                // Debug final
-                System.out.println("Executando debug do painel criado...");
-                if (painelSaudeAtivo != null) {
-                    // Aguardar um pouco para a UI se estabilizar
-                    Timer timer = new Timer(500, e -> {
-                        painelSaudeAtivo.debugEstadoTabela();
-                    });
-                    timer.setRepeats(false);
-                    timer.start();
-                }
-
-                System.out.println("=== onSaudeSelected CONCLUÍDO ===");
+                LOGGER.info("=== onSaudeSelected CONCLUÍDO ===");
 
             } catch (Exception e) {
-                System.err.println("ERRO em onSaudeSelected: " + e.getMessage());
-                e.printStackTrace();
+                LOGGER.log(Level.SEVERE, "ERRO em onSaudeSelected", e);
                 showNotification("❌ Erro ao carregar painel Saúde: " + e.getMessage());
             }
         });
@@ -442,18 +466,30 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         
         SwingUtilities.invokeLater(() -> {
             try {
-                LOGGER.info("Selecionando painel Dados");
+                LOGGER.info("=== INICIANDO onDadosSelected ===");
+
+                // **CORREÇÃO: Criar cópias thread-safe dos dados**
+                List<Paciente> pacientesParaPainel;
+                List<Especialidade> especialidadesParaFormulario;
+                List<PacienteEspecialidade> associacoesParaPainel;
                 
-                // Criar novos painéis com dados atualizados
-                painelDadosAtivo = new PainelDados2(
-                    new ArrayList<>(pacientes), 
-                    new ArrayList<>(pacienteEspecialidades)
-                );
+                synchronized (this) {
+                    pacientesParaPainel = new ArrayList<>(pacientes);
+                    especialidadesParaFormulario = new ArrayList<>(especialidades);
+                    associacoesParaPainel = new ArrayList<>(pacienteEspecialidades);
+                }
+
+                LOGGER.info("Criando PainelDados2 com " + pacientesParaPainel.size() + 
+                          " pacientes e " + associacoesParaPainel.size() + " associações...");
+                
+                painelDadosAtivo = new PainelDados2(pacientesParaPainel, associacoesParaPainel);
+                
+                LOGGER.info("Criando FormularioDados2P com " + especialidadesParaFormulario.size() + " especialidades...");
                 formularioDadosAtivo = new FormularioDados2P(
                     pacienteService, 
                     pacienteEspecialidadeService, 
                     especialidadeService, 
-                    new ArrayList<>(especialidades)
+                    especialidadesParaFormulario
                 );
                 
                 // **CORREÇÃO: Conectar os listeners ANTES de atualizar a interface**
@@ -462,6 +498,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
                 }
                 if (painelDadosAtivo != null && formularioDadosAtivo != null) {
                     painelDadosAtivo.setPatientSelectionListener(formularioDadosAtivo);
+                    LOGGER.info("Painéis conectados com sucesso");
                 }
                 
                 // Atualizar interface
@@ -472,7 +509,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
                 painelSaudeAtivo = null;
                 formularioSaudeAtivo = null;
                 
-                LOGGER.info("Painel Dados ativado");
+                LOGGER.info("=== onDadosSelected CONCLUÍDO ===");
                 
             } catch (Exception e) {
                 LOGGER.log(Level.SEVERE, "Erro ao ativar painel Dados", e);
@@ -489,54 +526,135 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         }
 
         recarregandoDados = true;
-        showNotification("🔄 Recarregando dados...");
-        
-        LOGGER.info("Iniciando recarregamento de dados");
+        showNotification("Recarregando sistema completo...");
 
-        // Executar recarregamento em background
-        CompletableFuture.runAsync(() -> {
-            try {
-                // Verificar conectividade
-                if (!isApiDisponivel()) {
-                    SwingUtilities.invokeLater(() -> {
-                        showNotification("⚠️ API não disponível para recarregamento");
-                        tentarReconexaoAutomatica();
-                    });
-                    return;
-                }
+        LOGGER.info("Iniciando recarregamento completo do sistema");
 
-                // Recarregar dados da API
-                carregarDados();
-
-                // Atualizar interface na EDT
-                SwingUtilities.invokeLater(() -> {
-                    atualizarPaineisAtivos();
-                    showNotification("✅ Dados recarregados com sucesso!");
-                    LOGGER.info("Recarregamento de dados concluído com sucesso");
-                });
-
-            } catch (Exception e) {
-                LOGGER.log(Level.SEVERE, "Erro durante recarregamento de dados", e);
-                SwingUtilities.invokeLater(() -> {
-                    showNotification("❌ Erro ao recarregar: " + e.getMessage());
-                    
-                    // Oferece opção de tentar reconectar
-                    int opcao = JOptionPane.showConfirmDialog(this,
-                        "Erro ao recarregar dados:\n" + e.getMessage() + 
-                        "\n\nDeseja tentar reconectar à API?",
-                        "Erro de Conectividade",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.WARNING_MESSAGE);
-                    
-                    if (opcao == JOptionPane.YES_OPTION) {
-                        tentarReconexao();
-                    }
-                });
-            } finally {
-                recarregandoDados = false;
+        try {
+            // Verificar conectividade
+            if (!isApiDisponivel()) {
+                LOGGER.warning("API não disponível para recarregamento");
+                showNotification("API não disponível para recarregamento");
+                tentarReconexaoAutomatica();
+                return;
             }
-        });
+
+            // 1. REINICIALIZAR SERVICES
+            LOGGER.info("1/4 - Reinicializando services...");
+            showNotification("Reinicializando conexões...");
+            inicializarServices();
+
+            // 2. RECARREGAR TODOS OS DADOS
+            LOGGER.info("2/4 - Carregando dados completos...");
+            showNotification("Carregando dados do servidor...");
+            carregarDadosCompletos();
+
+            // 3. RECRIAR TODOS OS PAINÉIS
+            LOGGER.info("3/4 - Recriando painéis...");
+            showNotification("Atualizando interface...");
+            recriarTodosPaineis();
+
+            // 4. ATUALIZAR INTERFACE ATUAL
+            LOGGER.info("4/4 - Atualizando interface atual...");
+            int abaSelecionada = menu31.getSelectedTab();
+            if (abaSelecionada == 0) {
+                showNotification("Carregando painel Saúde...");
+                onSaudeSelected();
+            } else {
+                showNotification("Carregando painel Dados...");
+                onDadosSelected();
+            }
+
+            showNotification("Sistema recarregado com sucesso!");
+            LOGGER.info("Recarregamento completo do sistema concluído com sucesso");
+
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Erro durante recarregamento completo do sistema", e);
+            showNotification("Erro ao recarregar: " + e.getMessage());
+
+            // Oferecer opção de reconexão
+            int opcao = JOptionPane.showConfirmDialog(this,
+                "Erro ao recarregar sistema:\n" + e.getMessage() + 
+                "\n\nDeseja tentar reconectar à API?",
+                "Erro de Recarregamento",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+
+            if (opcao == JOptionPane.YES_OPTION) {
+                tentarReconexao();
+            }
+        } finally {
+            recarregandoDados = false;
+        }
     }
+    
+    private void recriarTodosPaineis() {
+        try {
+            LOGGER.info("=== RECRIANDO TODOS OS PAINÉIS ===");
+
+            // Criar cópias thread-safe dos dados atualizados
+            List<Paciente> pacientesAtualizados;
+            List<Especialidade> especialidadesAtualizadas;
+            List<PacienteEspecialidade> associacoesAtualizadas;
+
+            synchronized (this) {
+                pacientesAtualizados = new ArrayList<>(pacientes);
+                especialidadesAtualizadas = new ArrayList<>(especialidades);
+                associacoesAtualizadas = new ArrayList<>(pacienteEspecialidades);
+            }
+
+            // RECRIAR PAINÉIS SAÚDE
+            LOGGER.info("Recriando painéis Saúde...");
+            painelSaudeAtivo = new PainelSaude2(pacientesAtualizados);
+            formularioSaudeAtivo = new FormularioSaude2P(
+                pacienteService, 
+                pacienteEspecialidadeService, 
+                especialidadeService, 
+                especialidadesAtualizadas
+            );
+
+            // Configurar painéis Saúde
+            if (formularioSaudeAtivo != null) {
+                formularioSaudeAtivo.setPreferredSize(new Dimension(500, 640));
+                formularioSaudeAtivo.setPatientUpdateListener(this);
+            }
+
+            if (painelSaudeAtivo != null && formularioSaudeAtivo != null) {
+                painelSaudeAtivo.setPatientSelectionListener(formularioSaudeAtivo);
+            }
+
+            // RECRIAR PAINÉIS DADOS
+            LOGGER.info("Recriando painéis Dados...");
+            painelDadosAtivo = new PainelDados2(pacientesAtualizados, associacoesAtualizadas);
+            formularioDadosAtivo = new FormularioDados2P(
+                pacienteService, 
+                pacienteEspecialidadeService, 
+                especialidadeService, 
+                especialidadesAtualizadas
+            );
+
+            // Configurar painéis Dados
+            if (formularioDadosAtivo != null) {
+                formularioDadosAtivo.setPatientUpdateListener(this);
+            }
+
+            if (painelDadosAtivo != null && formularioDadosAtivo != null) {
+                painelDadosAtivo.setPatientSelectionListener(formularioDadosAtivo);
+            }
+
+            LOGGER.info("Todos os painéis recriados com sucesso");
+            LOGGER.info("Painéis Saúde: " + (painelSaudeAtivo != null ? "OK" : "NULL") + 
+                       " | " + (formularioSaudeAtivo != null ? "OK" : "NULL"));
+            LOGGER.info("Painéis Dados: " + (painelDadosAtivo != null ? "OK" : "NULL") + 
+                       " | " + (formularioDadosAtivo != null ? "OK" : "NULL"));
+
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Erro ao recriar painéis", e);
+            throw new RuntimeException("Falha ao recriar painéis", e);
+        }
+    }
+
+   
     
     // Implementar os métodos da interface PatientUpdateListener:
     @Override
@@ -615,28 +733,6 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         });
     }
     
-    /**
-     * Atualiza os painéis ativos após recarregamento
-     */
-    private void atualizarPaineisAtivos() {
-        int abaSelecionada = menu31.getSelectedTab();
-        
-        if (abaSelecionada == 0 && painelSaudeAtivo != null) {
-            // Atualizar painel Saúde
-            painelSaudeAtivo.reloadData(new ArrayList<>(pacientes));
-            if (formularioSaudeAtivo != null) {
-                formularioSaudeAtivo.atualizarEspecialidades(new ArrayList<>(especialidades));
-            }
-        } else if (abaSelecionada == 1 && painelDadosAtivo != null) {
-            // Atualizar painel Dados
-            painelDadosAtivo.reloadData(new ArrayList<>(pacientes));
-            painelDadosAtivo.atualizarPacienteEspecialidade(new ArrayList<>(pacienteEspecialidades));
-            if (formularioDadosAtivo != null) {
-                formularioDadosAtivo.atualizarEspecialidades(new ArrayList<>(especialidades));
-            }
-        }
-    }
-    
     // ===== IMPLEMENTAÇÃO DOS LISTENERS DE MUDANÇAS =====
      
     @Override
@@ -655,9 +751,13 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
                 if (!jaExiste) {
                     pacienteEspecialidades.add(pacienteEspecialidade);
 
-                    // Atualizar apenas o painel de dados
+                    // **CORREÇÃO: Atualizar com cópia thread-safe**
+                    List<PacienteEspecialidade> associacoesAtualizadas = new ArrayList<>(pacienteEspecialidades);
+                    
+                    // Atualizar apenas o painel de dados se estiver ativo
                     if (painelDadosAtivo != null) {
-                        painelDadosAtivo.atualizarPacienteEspecialidade(new ArrayList<>(pacienteEspecialidades));
+                        painelDadosAtivo.atualizarPacienteEspecialidade(associacoesAtualizadas);
+                        LOGGER.info("PainelDados2 atualizado com nova associação");
                     }
 
                     showNotification("➕ Nova associação criada");
@@ -690,8 +790,12 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
                 }
 
                 if (atualizado) {
+                    // **CORREÇÃO: Atualizar com cópia thread-safe**
+                    List<PacienteEspecialidade> associacoesAtualizadas = new ArrayList<>(pacienteEspecialidades);
+                    
                     if (painelDadosAtivo != null) {
-                        painelDadosAtivo.atualizarPacienteEspecialidade(new ArrayList<>(pacienteEspecialidades));
+                        painelDadosAtivo.atualizarPacienteEspecialidade(associacoesAtualizadas);
+                        LOGGER.info("PainelDados2 atualizado com associação modificada");
                     }
                     showNotification("🔄 Associação atualizada");
                     LOGGER.info("Associação atualizada no cache local");
@@ -701,6 +805,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
             }
         });
     }
+
 
     @Override
     public void onPacienteEspecialidadeDeleted(Integer pacienteId, Integer especialidadeId) {
@@ -713,8 +818,12 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
                     pe.getPacienteId().equals(pacienteId) && pe.getEspecialidadeId().equals(especialidadeId));
 
                 if (removido) {
+                    // **CORREÇÃO: Atualizar com cópia thread-safe**
+                    List<PacienteEspecialidade> associacoesAtualizadas = new ArrayList<>(pacienteEspecialidades);
+                    
                     if (painelDadosAtivo != null) {
-                        painelDadosAtivo.atualizarPacienteEspecialidade(new ArrayList<>(pacienteEspecialidades));
+                        painelDadosAtivo.atualizarPacienteEspecialidade(associacoesAtualizadas);
+                        LOGGER.info("PainelDados2 atualizado após remoção de associação");
                     }
                     showNotification("🗑️ Associação removida");
                     LOGGER.info("Associação removida do cache local");
@@ -826,105 +935,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     }
     
     // ===== MÉTODOS DE GERENCIAMENTO DE DADOS =====
-    
-    /**
-     * Carrega todos os dados do sistema via API
-     */
-    private void carregarDados() {
-        try {
-            System.out.println("🔄 Carregando dados via API...");
-
-            if (!isApiDisponivel()) {
-                System.out.println("⚠️ API não disponível - mantendo dados em cache");
-                return;
-            }
-
-            // Carregar dados via Services
-            System.out.println("Carregando pacientes...");
-            List<Paciente> novosPacientes = pacienteService.listarTodos();
-            System.out.println("Pacientes carregados da API: " + novosPacientes.size());
-
-            System.out.println("Carregando especialidades...");
-            List<Especialidade> novasEspecialidades = especialidadeService.listarTodas();
-            System.out.println("Especialidades carregadas da API: " + novasEspecialidades.size());
-
-            System.out.println("Carregando associações...");
-            List<PacienteEspecialidade> novasAssociacoes = pacienteEspecialidadeService.listarTodos();
-            System.out.println("Associações carregadas da API: " + novasAssociacoes.size());
-
-            // Debug dos primeiros pacientes
-            if (!novosPacientes.isEmpty()) {
-                System.out.println("Primeiros pacientes carregados:");
-                for (int i = 0; i < Math.min(3, novosPacientes.size()); i++) {
-                    Paciente p = novosPacientes.get(i);
-                    System.out.println("  " + (i+1) + ". " + p.getNome() + " (ID: " + p.getId() + ")");
-                }
-            }
-
-            // Atualizar cache local de forma thread-safe
-            synchronized (pacientes) {
-                pacientes.clear();
-                pacientes.addAll(novosPacientes);
-                System.out.println("Cache de pacientes atualizado: " + pacientes.size() + " itens");
-            }
-
-            synchronized (especialidades) {
-                especialidades.clear();
-                especialidades.addAll(novasEspecialidades);
-                System.out.println("Cache de especialidades atualizado: " + especialidades.size() + " itens");
-            }
-
-            synchronized (pacienteEspecialidades) {
-                pacienteEspecialidades.clear();
-                pacienteEspecialidades.addAll(novasAssociacoes);
-                System.out.println("Cache de associações atualizado: " + pacienteEspecialidades.size() + " itens");
-            }
-
-            System.out.println("📊 Dados carregados: " + pacientes.size() + " pacientes, " + 
-                       especialidades.size() + " especialidades, " + 
-                       pacienteEspecialidades.size() + " associações");
-
-            // Após carregar dados, forçar atualização visual se não estamos inicializando
-            if (!inicializando) {
-                forcarRecarregamentoVisual();
-            }
-
-        } catch (Exception e) {
-            System.err.println("ERRO ao carregar dados via API: " + e.getMessage());
-            e.printStackTrace();
-
-            // Em caso de erro, manter dados existentes e notificar
-            SwingUtilities.invokeLater(() -> {
-                showNotification("❌ Erro ao carregar dados: " + e.getMessage());
-            });
-
-            throw new RuntimeException("Falha no carregamento de dados", e);
-        }
-    }
-    
-    public void forcarRecarregamentoVisual() {
-        SwingUtilities.invokeLater(() -> {
-            System.out.println("=== FORÇANDO RECARREGAMENTO VISUAL ===");
-
-            // Obter aba ativa
-            int abaSelecionada = menu31 != null ? menu31.getSelectedTab() : 0;
-            System.out.println("Aba selecionada: " + abaSelecionada);
-
-            if (abaSelecionada == 0 && painelSaudeAtivo != null) {
-                System.out.println("Recarregando painel Saúde...");
-                painelSaudeAtivo.reloadData(new ArrayList<>(pacientes));
-                painelSaudeAtivo.debugEstadoTabela();
-            } else if (abaSelecionada == 1 && painelDadosAtivo != null) {
-                System.out.println("Recarregando painel Dados...");
-                painelDadosAtivo.reloadData(new ArrayList<>(pacientes));
-                painelDadosAtivo.debugEstadoTabela();
-            } else {
-                System.out.println("Nenhum painel ativo para recarregar");
-            }
-
-            System.out.println("=== FIM RECARREGAMENTO VISUAL ===");
-        });
-    }
+   
     
     /**
      * Verifica se a API está disponível
@@ -932,14 +943,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     private boolean isApiDisponivel() {
         return apiManager != null && apiManager.isApiDisponivel();
     }
-    
-    /**
-     * Verifica se o WebSocket está conectado
-     */
-    private boolean isWebSocketConectado() {
-        return apiManager != null && apiManager.isWebSocketConectado();
-    }
-    
+   
     // ===== MÉTODOS DE CONECTIVIDADE =====
     
     /**
@@ -1200,22 +1204,6 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         status.append(apiManager.getStatusCompleto());
         
         return status.toString();
-    }
-    
-    /**
-     * Verifica se o sistema está em modo offline
-     */
-    public boolean isModoOffline() {
-        return !isApiDisponivel();
-    }
-    
-    /**
-     * Força atualização completa dos dados
-     */
-    public void forcarAtualizacaoCompleta() {
-        if (!recarregandoDados && !inicializando) {
-            onRecarregarClicked();
-        }
     }
     
     /**

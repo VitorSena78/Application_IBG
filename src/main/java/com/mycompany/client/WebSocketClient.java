@@ -532,32 +532,4 @@ public class WebSocketClient {
     public boolean isReconnecting() {
         return reconnecting;
     }
-    
-    public String getConnectionStatus() {
-        if (isConnected()) {
-            return "✓ Conectado";
-        } else if (isReconnecting()) {
-            return "⟳ Reconectando...";
-        } else {
-            return "✗ Desconectado";
-        }
-    }
-    
-    /**
-     * Força uma tentativa de reconexão imediata
-     */
-    public boolean forceReconnect() {
-        if (connected) {
-            disconnect();
-        }
-        
-        // Aguarda um pouco para garantir que a desconexão foi processada
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        
-        return connect();
-    }
 }

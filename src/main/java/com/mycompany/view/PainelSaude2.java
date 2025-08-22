@@ -178,18 +178,7 @@ public class PainelSaude2 extends javax.swing.JPanel {
         idColumn.setPreferredWidth(0);
         idColumn.setWidth(0);
     }
-    
-    // Método para obter o ID do paciente da linha selecionada
-    public String getSelectedPatientId() {
-        int selectedRow = jTable1.getSelectedRow();
-        if (selectedRow != -1) {
-            Object idValue = tableModel.getValueAt(selectedRow, 10); // Coluna ID
-            return idValue != null ? idValue.toString() : null;
-        }
-        return null;
-    }
-
-    
+ 
     
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">                          
@@ -307,12 +296,34 @@ public class PainelSaude2 extends javax.swing.JPanel {
         System.out.println("=== reloadData chamado ===");
         System.out.println("Novos pacientes: " + (novosPacientes != null ? novosPacientes.size() : "NULL"));
 
+        // **CORREÇÃO 1: Limpar seleção ANTES de recarregar**
+        limparSelecaoAtual();
+
         // Atualizar referência da lista
         this.pacientes = novosPacientes;
 
         // Recarregar dados na tabela
         SwingUtilities.invokeLater(() -> {
             loadPacientes();
+
+            // **CORREÇÃO 2: Forçar repaint após carregar**
+            jTable1.revalidate();
+            jTable1.repaint();
+
+            System.out.println("✅ Dados recarregados no PainelSaude2 - " + 
+                              (novosPacientes != null ? novosPacientes.size() : 0) + " pacientes");
+        });
+    }
+    
+    // Limpa a seleção atual e reseta o estado
+    public void limparSelecaoAtual() {
+        SwingUtilities.invokeLater(() -> {
+            jTable1.clearSelection();
+
+            // Notificar o listener que não há mais seleção
+            if (patientSelectionListener != null) {
+                patientSelectionListener.onPatientSelected(null);
+            }
         });
     }
     
@@ -342,10 +353,6 @@ public class PainelSaude2 extends javax.swing.JPanel {
         System.out.println("=== FIM DEBUG ===");
     }
     
-    // Método público para limpar todos os dados
-    public void clearAllData() {
-        tableModel.setRowCount(0);
-    }
     
     // Método para adicionar um novo paciente
     public void adicionarPaciente(Paciente p) {

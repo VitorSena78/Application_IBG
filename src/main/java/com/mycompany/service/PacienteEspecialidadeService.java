@@ -12,10 +12,7 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 import javax.swing.JOptionPane;
 
-/**
- * Service para operações com PacienteEspecialidade através da API
- * Versão adaptada para trabalhar com DTOs
- */
+//Service para operações com PacienteEspecialidade através da API
 public class PacienteEspecialidadeService {
     
     private static final Logger LOGGER = Logger.getLogger(PacienteEspecialidadeService.class.getName());
@@ -26,9 +23,7 @@ public class PacienteEspecialidadeService {
         this.apiClient = apiClient;
     }
     
-    /**
-     * Insere uma nova associação pacienteEspecialidade
-     */
+    // Insere uma nova associação pacienteEspecialidade
     public boolean inserir(PacienteEspecialidade pacienteEspecialidade) {
         if (pacienteEspecialidade == null || 
             pacienteEspecialidade.getPacienteId() == null || 
@@ -47,24 +42,20 @@ public class PacienteEspecialidadeService {
             if (resultado != null) {
                 LOGGER.info("Associação inserida com sucesso: Paciente " + pacienteEspecialidade.getPacienteId() + 
                            " - Especialidade " + pacienteEspecialidade.getEspecialidadeId());
-                JOptionPane.showMessageDialog(null, "Associação salva com sucesso");
                 return true;
             }
             return false;
             
         } catch (ApiException e) {
             LOGGER.log(Level.SEVERE, "Erro ao inserir associação", e);
-            JOptionPane.showMessageDialog(null, "Erro ao salvar associação: " + e.getMessage());
             return false;
         }
     }
     
-    /**
-     * Insere uma lista de associações PacienteEspecialidade
-     */
+    //Insere uma lista de associações PacienteEspecialidade
     public boolean inserirLista(List<PacienteEspecialidade> listaPacienteEspecialidade) {
         if (listaPacienteEspecialidade == null || listaPacienteEspecialidade.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "Lista vazia ou nula. Nenhuma associação para inserir.");
+            LOGGER.info("Lista vazia ou nula. Nenhuma associação para inserir.");
             return false;
         }
 
@@ -80,24 +71,19 @@ public class PacienteEspecialidadeService {
 
             if (resultadoDtos != null && !resultadoDtos.isEmpty()) {
                 LOGGER.info("Lista de associações inserida com sucesso: " + resultadoDtos.size() + " itens");
-                JOptionPane.showMessageDialog(null, 
-                    "Inserção em lote concluída!\n✓ " + resultadoDtos.size() + " associações inseridas com sucesso");
                 return true;
             } else {
-                JOptionPane.showMessageDialog(null, "Nenhuma nova associação foi inserida.");
+                LOGGER.info("Nenhuma nova associação foi inserida.");
                 return false;
             }
 
         } catch (ApiException e) {
             LOGGER.log(Level.SEVERE, "Erro ao inserir lista de associações", e);
-            JOptionPane.showMessageDialog(null, "Erro ao inserir lista de associações: " + e.getMessage());
             return false;
         }
     }
     
-    /**
-     * Lista todas as associações
-     */
+    // Lista todas as associações
     public List<PacienteEspecialidade> listarTodos() {
         try {
             // Recebe DTOs da API
@@ -112,16 +98,15 @@ public class PacienteEspecialidadeService {
             
         } catch (ApiException e) {
             LOGGER.log(Level.SEVERE, "Erro ao listar associações", e);
-            return List.of();
+            return new java.util.ArrayList<>(); // Retorna lista vazia mutável
         }
     }
     
-    /**
-     * Busca todas as especialidades de um paciente
-     */
+    //Busca todas as especialidades de um paciente
     public List<PacienteEspecialidade> buscarPorPacienteId(int pacienteId) {
         if (pacienteId <= 0) {
-            return List.of();
+            LOGGER.warning("ID de paciente inválido: " + pacienteId);
+            return new java.util.ArrayList<>();
         }
         
         try {
@@ -139,69 +124,11 @@ public class PacienteEspecialidadeService {
             
         } catch (ApiException e) {
             LOGGER.log(Level.SEVERE, "Erro ao buscar associações por paciente ID: " + pacienteId, e);
-            return List.of();
+            return new java.util.ArrayList<>();
         }
     }
     
-    /**
-     * Busca todos os pacientes de uma especialidade
-     */
-    public List<PacienteEspecialidade> buscarPorEspecialidadeId(int especialidadeId) {
-        if (especialidadeId <= 0) {
-            return List.of();
-        }
-        
-        try {
-            String endpoint = PACIENTE_ESPECIALIDADE_ENDPOINT + "/especialidade/" + especialidadeId;
-            
-            // Recebe DTOs da API
-            List<PacienteEspecialidadeDTO> associacaoDtos = apiClient.getList(endpoint, 
-                                                                               new TypeReference<List<PacienteEspecialidadeDTO>>(){});
-            
-            // Converte DTOs para modelos de domínio
-            List<PacienteEspecialidade> associacoes = DtoMapper.toPacienteEspecialidadeModelList(associacaoDtos);
-            
-            LOGGER.info("Encontrados " + associacoes.size() + " pacientes para especialidade ID: " + especialidadeId);
-            return associacoes;
-            
-        } catch (ApiException e) {
-            LOGGER.log(Level.SEVERE, "Erro ao buscar associações por especialidade ID: " + especialidadeId, e);
-            return List.of();
-        }
-    }
-    
-    /**
-     * Busca uma associação específica por paciente e especialidade
-     */
-    public PacienteEspecialidade buscarPorPacienteEEspecialidade(int pacienteId, int especialidadeId) {
-        if (pacienteId <= 0 || especialidadeId <= 0) {
-            return null;
-        }
-        
-        try {
-            String endpoint = PACIENTE_ESPECIALIDADE_ENDPOINT + "/paciente/" + pacienteId + "/especialidade/" + especialidadeId;
-            
-            // Recebe DTO da API
-            PacienteEspecialidadeDTO associacaoDto = apiClient.get(endpoint, PacienteEspecialidadeDTO.class);
-            
-            if (associacaoDto != null) {
-                LOGGER.info("Associação encontrada: Paciente " + pacienteId + " - Especialidade " + especialidadeId);
-                // Converte DTO para modelo de domínio
-                return DtoMapper.toModel(associacaoDto);
-            } else {
-                LOGGER.info("Associação não encontrada: Paciente " + pacienteId + " - Especialidade " + especialidadeId);
-                return null;
-            }
-            
-        } catch (ApiException e) {
-            LOGGER.log(Level.SEVERE, "Erro ao buscar associação específica", e);
-            return null;
-        }
-    }
-    
-    /**
-     * Atualiza a data de atendimento de uma associação
-     */
+    //Atualiza a data de atendimento de uma associação
     public boolean atualizar(PacienteEspecialidade pacienteEspecialidade) {
         if (pacienteEspecialidade == null || 
             pacienteEspecialidade.getPacienteId() == null || 
@@ -233,12 +160,10 @@ public class PacienteEspecialidadeService {
         }
     }
     
-    /**
-     * Remove uma associação específica
-     */
+    //Remove uma associação específica
     public boolean deletar(int pacienteId, int especialidadeId) {
         if (pacienteId <= 0 || especialidadeId <= 0) {
-            LOGGER.warning("IDs inválidos para exclusão");
+            LOGGER.warning("IDs inválidos para exclusão: pacienteId=" + pacienteId + ", especialidadeId=" + especialidadeId);
             return false;
         }
         
@@ -260,12 +185,10 @@ public class PacienteEspecialidadeService {
         }
     }
     
-    /**
-     * Remove todas as associações de um paciente
-     */
+    // Remove todas as associações de um paciente
     public boolean deletarPorPacienteId(int pacienteId) {
         if (pacienteId <= 0) {
-            LOGGER.warning("ID inválido para exclusão");
+            LOGGER.warning("ID inválido para exclusão: " + pacienteId);
             return false;
         }
         
@@ -276,8 +199,10 @@ public class PacienteEspecialidadeService {
             if (sucesso) {
                 LOGGER.info("Todas as associações do paciente deletadas: ID " + pacienteId);
                 return true;
+            } else {
+                LOGGER.warning("Nenhuma associação encontrada para deletar do paciente ID: " + pacienteId);
+                return false; // Pode não ser erro se não houver associações
             }
-            return false;
             
         } catch (ApiException e) {
             LOGGER.log(Level.SEVERE, "Erro ao deletar associações do paciente: ID " + pacienteId, e);
@@ -285,80 +210,7 @@ public class PacienteEspecialidadeService {
         }
     }
     
-    /**
-     * Remove todas as associações de uma especialidade
-     */
-    public boolean deletarPorEspecialidadeId(int especialidadeId) {
-        if (especialidadeId <= 0) {
-            LOGGER.warning("ID inválido para exclusão");
-            return false;
-        }
-        
-        try {
-            String endpoint = PACIENTE_ESPECIALIDADE_ENDPOINT + "/especialidade/" + especialidadeId;
-            boolean sucesso = apiClient.delete(endpoint);
-            
-            if (sucesso) {
-                LOGGER.info("Todas as associações da especialidade deletadas: ID " + especialidadeId);
-                return true;
-            }
-            return false;
-            
-        } catch (ApiException e) {
-            LOGGER.log(Level.SEVERE, "Erro ao deletar associações da especialidade: ID " + especialidadeId, e);
-            return false;
-        }
-    }
-    
-    /**
-     * Verifica se uma associação já existe
-     */
-    public boolean existeAssociacao(int pacienteId, int especialidadeId) {
-        if (pacienteId <= 0 || especialidadeId <= 0) {
-            return false;
-        }
-        
-        try {
-            String endpoint = PACIENTE_ESPECIALIDADE_ENDPOINT + "/existe/paciente/" + pacienteId + "/especialidade/" + especialidadeId;
-            Boolean existe = apiClient.get(endpoint, Boolean.class);
-            return existe != null && existe;
-            
-        } catch (ApiException e) {
-            LOGGER.log(Level.SEVERE, "Erro ao verificar existência da associação", e);
-            return false;
-        }
-    }
-    
-    /**
-     * Busca associações por data de atendimento
-     */
-    public List<PacienteEspecialidade> buscarPorDataAtendimento(String dataAtendimento) {
-        if (dataAtendimento == null || dataAtendimento.trim().isEmpty()) {
-            return List.of();
-        }
-        
-        try {
-            String endpoint = PACIENTE_ESPECIALIDADE_ENDPOINT + "/data/" + dataAtendimento.trim();
-            
-            // Recebe DTOs da API
-            List<PacienteEspecialidadeDTO> associacaoDtos = apiClient.getList(endpoint, 
-                                                                               new TypeReference<List<PacienteEspecialidadeDTO>>(){});
-            
-            // Converte DTOs para modelos de domínio
-            List<PacienteEspecialidade> associacoes = DtoMapper.toPacienteEspecialidadeModelList(associacaoDtos);
-            
-            LOGGER.info("Encontradas " + associacoes.size() + " associações para a data: " + dataAtendimento);
-            return associacoes;
-            
-        } catch (ApiException e) {
-            LOGGER.log(Level.SEVERE, "Erro ao buscar associações por data: " + dataAtendimento, e);
-            return List.of();
-        }
-    }
-    
-    /**
-     * Conta o total de associações
-     */
+    //Conta o total de associações
     public int contarTotal() {
         try {
             String endpoint = PACIENTE_ESPECIALIDADE_ENDPOINT + "/count";
@@ -369,12 +221,5 @@ public class PacienteEspecialidadeService {
             LOGGER.log(Level.SEVERE, "Erro ao contar associações", e);
             return 0;
         }
-    }
-    
-    /**
-     * Verifica se o serviço de API está disponível
-     */
-    public boolean isServicoDisponivel() {
-        return apiClient.isApiAvailable();
     }
 }

@@ -6,7 +6,7 @@ package com.mycompany.model.bean;
  */
 public class Paciente {
     
-    private Integer id;                   // Identificador único do paciente
+    private Integer id;               // Identificador único do paciente
     private String nome;              // Nome completo do paciente
     private String dataNascimento;    // Data de nascimento
     private Integer idade;            // Idade calculada a partir da data de nascimento
@@ -48,11 +48,11 @@ public class Paciente {
     }
 
     public String getDataNascimento() {
-        return dataNascimento;
+        return dataNascimento != null ? dataNascimento : "";
     }
 
     public void setDataNascimento(String dataNascimento) {
-        this.dataNascimento = dataNascimento;
+        this.dataNascimento = dataNascimento != null ? dataNascimento.trim() : "";
     }
 
     public Integer getIdade() {
@@ -64,51 +64,51 @@ public class Paciente {
     }
 
     public String getNomeDaMae() {
-        return nomeDaMae;
+        return nomeDaMae != null ? nomeDaMae : "";
     }
 
     public void setNomeDaMae(String nomeDaMae) {
-        this.nomeDaMae = nomeDaMae;
+        this.nomeDaMae = nomeDaMae != null ? nomeDaMae.trim() : "";
     }
 
     public String getCpf() {
-        return cpf;
+        return cpf != null ? cpf : "";
     }
 
     public void setCpf(String cpf) {
-        this.cpf = cpf;
+        this.cpf = cpf != null ? cpf.trim() : "";
     }
 
     public String getSus() {
-        return sus;
+        return sus != null ? sus : "";
     }
 
     public void setSus(String sus) {
-        this.sus = sus;
+        this.sus = sus != null ? sus.trim() : "";
     }
 
     public String getTelefone() {
-        return telefone;
+        return telefone != null ? telefone : "";
     }
 
     public void setTelefone(String telefone) {
-        this.telefone = telefone;
+        this.telefone = telefone != null ? telefone.trim() : "";
     }
 
     public String getEndereco() {
-        return endereco;
+        return endereco != null ? endereco : "";
     }
 
     public void setEndereco(String endereco) {
-        this.endereco = endereco;
+        this.endereco = endereco != null ? endereco.trim() : "";
     }
 
     public String getPaXMmhg() {
-        return paXMmhg;
+        return paXMmhg != null ? paXMmhg : "";
     }
 
     public void setPaXMmhg(String paXMmhg) {
-        this.paXMmhg = paXMmhg;
+        this.paXMmhg = paXMmhg != null ? paXMmhg.trim() : "";
     }
 
     public Float getFcBpm() {
@@ -175,19 +175,24 @@ public class Paciente {
         this.imc = (imc != null) ? imc : 0.0f;
     }
     
+    public boolean isValid() {
+        return id != null && 
+               nome != null && !nome.trim().isEmpty();
+    }
+    
     @Override
     public String toString() {
         return "Paciente{" +
-                "\n  ID: " + id +
-                "\n  Nome: " + (nome != null ? nome : "N/A") +
-                "\n  Data de Nascimento: " + (dataNascimento != null ? dataNascimento : "N/A") +
+                "\n  ID: " + (id != null ? id : "N/A") +
+                "\n  Nome: " + getNome() +
+                "\n  Data de Nascimento: " + getDataNascimento() +
                 "\n  Idade: " + (idade != null ? idade + " anos" : "N/A") +
-                "\n  Nome da Mãe: " + (nomeDaMae != null ? nomeDaMae : "N/A") +
-                "\n  CPF: " + (cpf != null ? cpf : "N/A") +
-                "\n  SUS: " + (sus != null ? sus : "N/A") +
-                "\n  Telefone: " + (telefone != null ? telefone : "N/A") +
-                "\n  Endereço: " + (endereco != null ? endereco : "N/A") +
-                "\n  Pressão Arterial: " + (paXMmhg != null ? paXMmhg : "N/A") +
+                "\n  Nome da Mãe: " + getNomeDaMae() +
+                "\n  CPF: " + getCpf() +
+                "\n  SUS: " + getSus() +
+                "\n  Telefone: " + getTelefone() +
+                "\n  Endereço: " + getEndereco() +
+                "\n  Pressão Arterial: " + getPaXMmhg() +
                 "\n  Frequência Cardíaca: " + (fcBpm > 0 ? fcBpm + " bpm" : "N/A") +
                 "\n  Frequência Respiratória: " + (frIbpm > 0 ? frIbpm + " ipm" : "N/A") +
                 "\n  Temperatura: " + (temperaturaC > 0 ? temperaturaC + " °C" : "N/A") +
@@ -198,5 +203,7 @@ public class Paciente {
                 "\n  IMC: " + (imc > 0 ? String.format("%.2f", imc) : "N/A") +
                 "\n}";
     }
+
+    
     
 }

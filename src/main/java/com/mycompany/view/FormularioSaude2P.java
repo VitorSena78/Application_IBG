@@ -34,7 +34,6 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
     private EspecialidadeService especialidadeService;
     
     // Lista para armazenar os registros de sinais vitais
-    private List<Paciente> listaPacientes;
     private Paciente paciente = new Paciente();
     private DecimalFormat df = new DecimalFormat("#.##");
     private Printer printer;
@@ -51,7 +50,7 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
         this.pacienteEspecialidadeService = pacienteEspecialidadeService;
         this.especialidadeService = especialidadeService;
         
-        listaPacientes = new ArrayList<>();
+        
         initComponents();
 
         // Inicializar o printer com as dependências necessárias

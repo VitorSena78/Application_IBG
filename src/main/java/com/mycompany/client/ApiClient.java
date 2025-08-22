@@ -445,37 +445,6 @@ public class ApiClient {
     }
     
     /**
-     * Método para obter ApiResponse completa (útil para debugging)
-     */
-    public <T> ApiResponse<T> getApiResponse(String endpoint, TypeReference<T> typeReference) throws ApiException {
-        HttpGet request = new HttpGet(baseUrl + endpoint);
-        request.setHeader("Content-Type", "application/json");
-        request.setHeader("Accept", "application/json");
-        
-        LOGGER.info("GET ApiResponse: " + baseUrl + endpoint);
-        
-        try {
-            HttpResponse response = httpClient.execute(request);
-            int statusCode = response.getStatusLine().getStatusCode();
-            HttpEntity entity = response.getEntity();
-            
-            if (entity != null) {
-                String responseBody = EntityUtils.toString(entity, "UTF-8");
-                
-                if (statusCode >= 200 && statusCode < 300) {
-                    return objectMapper.readValue(responseBody, new TypeReference<ApiResponse<T>>(){});
-                } else {
-                    throw new ApiException("Erro HTTP " + statusCode + ": " + responseBody);
-                }
-            } else {
-                throw new ApiException("Resposta vazia");
-            }
-        } catch (IOException e) {
-            throw new ApiException("Erro na requisição: " + e.getMessage(), e);
-        }
-    }
-    
-    /**
      * Fecha o cliente HTTP
      */
     public void close() {
@@ -544,37 +513,6 @@ public class ApiClient {
         } catch (Exception e) {
             LOGGER.fine("Endpoint " + endpoint + " não respondeu: " + e.getMessage());
             return false;
-        }
-    }
-    
-    /**
-     * Executa um ping básico para testar conectividade
-     */
-    public boolean ping() {
-        return isApiAvailable();
-    }
-    
-    /**
-     * Obtém informações detalhadas da API
-     */
-    public String getApiInfo() {
-        try {
-            String info = get("/actuator/info", String.class);
-            return info != null ? info : "Informações não disponíveis";
-        } catch (Exception e) {
-            return "Erro ao obter informações: " + e.getMessage();
-        }
-    }
-    
-    /**
-     * Obtém o status de saúde da API
-     */
-    public String getHealthStatus() {
-        try {
-            String health = get("/health", String.class);
-            return health != null ? health : "Status não disponível";
-        } catch (Exception e) {
-            return "Erro ao obter status: " + e.getMessage();
         }
     }
 }

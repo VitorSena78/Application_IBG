@@ -220,19 +220,78 @@ public class PainelDados2 extends javax.swing.JPanel {
         System.out.println("=== reloadData chamado PainelDados2 ===");
         System.out.println("Novos pacientes: " + (novosPacientes != null ? novosPacientes.size() : "NULL"));
 
+        //  Limpar seleção ANTES de recarregar
+        limparSelecaoAtual();
+
         // Atualizar referência da lista
         this.pacientes = novosPacientes;
 
         // Recarregar dados na tabela
         SwingUtilities.invokeLater(() -> {
             loadPacientes();
+
+            //  Forçar repaint após carregar
+            jTable1.revalidate();
+            jTable1.repaint();
+
+            System.out.println("✅ Dados recarregados no PainelDados2 - " + 
+                              (novosPacientes != null ? novosPacientes.size() : 0) + " pacientes");
         });
     }
     
-    // Método público para limpar todos os dados
-    public void clearAllData() {
-        tableModel.setRowCount(0);
+    //Limpa a seleção atual e reseta o estado
+    public void limparSelecaoAtual() {
+        System.out.println("=== limparSelecaoAtual PainelDados2 ===");
+
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Limpar seleção da tabela
+                if (jTable1 != null) {
+                    jTable1.clearSelection();
+                    System.out.println("✅ Seleção da tabela limpa");
+                }
+
+                // CORREÇÃO PRINCIPAL: Notificar listener com dados limpos de forma mais robusta
+                if (patientSelectionListener != null) {
+                    System.out.println("Notificando listener sobre limpeza de seleção...");
+
+                    // Criar lista vazia de especialidades e paciente nulo
+                    List<PacienteEspecialidade> listaVazia = new ArrayList<>();
+
+                    // Notificar com ambos os métodos para garantir compatibilidade
+                    try {
+                        // Primeiro método: com paciente e especialidades
+                        patientSelectionListener.onPatientSelected(null, listaVazia);
+
+                        // Segundo método: apenas com paciente (para fallback)
+                        if (patientSelectionListener instanceof com.mycompany.view.PatientSelectionListener) {
+                            ((com.mycompany.view.PatientSelectionListener) patientSelectionListener).onPatientSelected(null);
+                        }
+
+                        System.out.println("✅ Listener notificado sobre limpeza com ambos os métodos");
+                    } catch (Exception e) {
+                        System.err.println("❌ Erro ao notificar listener: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                } else {
+                    System.out.println("⚠️ patientSelectionListener é NULL - não foi possível notificar sobre limpeza");
+                }
+
+                // Forçar repaint da tabela
+                if (jTable1 != null) {
+                    jTable1.revalidate();
+                    jTable1.repaint();
+                }
+
+                System.out.println("✅ Seleção limpa no PainelDados2");
+
+            } catch (Exception e) {
+                System.err.println("❌ Erro ao limpar seleção: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
     }
+    
     
     // Método para adicionar um novo paciente
     public void adicionarPaciente(Paciente p) {
@@ -280,12 +339,48 @@ public class PainelDados2 extends javax.swing.JPanel {
         jTable1.scrollRectToVisible(jTable1.getCellRect(lastRow, 0, true));
     }
     
-    public void atualizarPacienteEspecialidade(List<PacienteEspecialidade> novaListaPacienteEspecialidade) {
-        // Atualizar a lista interna
-        this.pacienteEspecialidades = novaListaPacienteEspecialidade;
+    // NOVO MÉTODO: Recarregar dados SEM limpar seleção
+    public void reloadDataSemLimparSelecao(List<Paciente> novosPacientes) {
+        System.out.println("=== reloadDataSemLimparSelecao chamado PainelDados2 ===");
+        System.out.println("Novos pacientes: " + (novosPacientes != null ? novosPacientes.size() : "NULL"));
 
-        // Recarregar/atualizar a exibição dos dados
-        // Exemplo: se você tem uma tabela ou lista visual
+        // NÃO limpar seleção aqui - apenas atualizar dados
+        // Atualizar referência da lista
+        this.pacientes = novosPacientes;
+
+        // Recarregar dados na tabela
+        SwingUtilities.invokeLater(() -> {
+            loadPacientes();
+
+            // Forçar repaint após carregar
+            jTable1.revalidate();
+            jTable1.repaint();
+
+            System.out.println("✅ Dados recarregados no PainelDados2 - " + 
+                              (novosPacientes != null ? novosPacientes.size() : 0) + " pacientes");
+        });
+    }
+    
+    // O método atualizarPacienteEspecialidade:
+    public void atualizarPacienteEspecialidade(List<PacienteEspecialidade> novaListaPacienteEspecialidade) {
+        System.out.println("=== Atualizando PacienteEspecialidade no PainelDados2 ===");
+        System.out.println("Nova lista: " + (novaListaPacienteEspecialidade != null ? novaListaPacienteEspecialidade.size() : "NULL") + " associações");
+
+        // Atualizar a lista interna de forma thread-safe
+        synchronized (this) {
+            this.pacienteEspecialidades = novaListaPacienteEspecialidade != null ? 
+                new ArrayList<>(novaListaPacienteEspecialidade) : new ArrayList<>();
+        }
+
+        // CORREÇÃO: Forçar repaint para garantir que mudanças sejam refletidas visualmente
+        SwingUtilities.invokeLater(() -> {
+            if (jTable1 != null) {
+                jTable1.revalidate();
+                jTable1.repaint();
+            }
+        });
+
+        System.out.println("✅ Lista PacienteEspecialidade atualizada: " + this.pacienteEspecialidades.size() + " associações");
     }
     
     // Método para atualizar um paciente existente
@@ -529,14 +624,48 @@ public class PainelDados2 extends javax.swing.JPanel {
         return patientData;
     }
     
-    private List<PacienteEspecialidade> buscaPacienteEspecialidade(Paciente paciente){
-        // Verifica se o paciente e a lista de especialidades são válidos
-        if (paciente == null || pacienteEspecialidades == null || pacienteEspecialidades.isEmpty()) {
+    // O método buscaPacienteEspecialidade para ser thread-safe:
+    private List<PacienteEspecialidade> buscaPacienteEspecialidade(Paciente paciente) {
+        // Verifica se o paciente é válido
+        if (paciente == null || paciente.getId() <= 0) {
+            System.out.println("Paciente inválido para busca de especialidades");
             return new ArrayList<>();
         }
 
-        // Filtra as especialidades relacionadas ao paciente usando stream
-        return pacienteEspecialidades.stream().filter(pe -> pe.getPacienteId() == paciente.getId()).collect(Collectors.toList());
+        // Busca thread-safe das especialidades
+        List<PacienteEspecialidade> especialidadesLocais;
+        synchronized (this) {
+            especialidadesLocais = this.pacienteEspecialidades != null ? 
+                new ArrayList<>(this.pacienteEspecialidades) : new ArrayList<>();
+        }
+
+        if (especialidadesLocais.isEmpty()) {
+            System.out.println("⚠️ Lista de especialidades vazia para paciente ID: " + paciente.getId() + 
+                              " - Verifique se atualizarPacienteEspecialidade foi chamado primeiro");
+            return new ArrayList<>();
+        }
+
+        // Filtra as especialidades relacionadas ao paciente
+        List<PacienteEspecialidade> especialidadesPaciente = especialidadesLocais.stream()
+            .filter(pe -> pe.getPacienteId() != null && pe.getPacienteId().equals(paciente.getId()))
+            .collect(Collectors.toList());
+
+        System.out.println("Encontradas " + especialidadesPaciente.size() + 
+                          " especialidades para paciente: " + paciente.getNome() + " (ID: " + paciente.getId() + ")");
+
+        // CORREÇÃO: Log adicional para debug
+        if (especialidadesPaciente.isEmpty() && !especialidadesLocais.isEmpty()) {
+            System.out.println("⚠️ DEBUG: Total de associações disponíveis: " + especialidadesLocais.size());
+            System.out.println("⚠️ DEBUG: Procurando por pacienteId: " + paciente.getId());
+            // Log das primeiras 3 associações para debug
+            for (int i = 0; i < Math.min(3, especialidadesLocais.size()); i++) {
+                PacienteEspecialidade pe = especialidadesLocais.get(i);
+                System.out.println("⚠️ DEBUG: Associação " + i + " - PacienteId: " + pe.getPacienteId() + 
+                                  ", EspecialidadeId: " + pe.getEspecialidadeId());
+            }
+        }
+
+        return especialidadesPaciente;
     }
     
     private void setupCustomScrollPane() {

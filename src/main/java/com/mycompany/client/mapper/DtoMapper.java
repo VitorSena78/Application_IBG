@@ -13,8 +13,7 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 
 /**
- * Classe utilitária para converter DTOs da API para modelos de domínio
- * Versão corrigida com tratamento adequado de tipos primitivos/wrapper
+ * Versão melhorada com prevenção robusta de NullPointerException
  */
 public class DtoMapper {
     
@@ -23,35 +22,35 @@ public class DtoMapper {
     // ===== CONVERSÕES DTO → MODEL =====
     
     /**
-     * Converte PacienteDTO para Paciente
+     * Converte PacienteDTO para Paciente com validação robusta
      */
     public static Paciente toModel(PacienteDTO dto) {
         if (dto == null) {
+            LOGGER.warning("PacienteDTO é null");
             return null;
         }
 
-        // VALIDAÇÃO CRÍTICA: Verificar se o DTO tem ID
         if (dto.getId() == null) {
-            LOGGER.warning("PacienteDTO com ID nulo será ignorado: " + dto.getNome());
+            LOGGER.warning("PacienteDTO com ID nulo será ignorado: " + safeGetString(dto.getNome()));
             return null;
         }
 
         try {
             Paciente paciente = new Paciente();
 
-            // Campos obrigatórios - CORRIGIDO: usar intValue() para evitar NPE
-            paciente.setId(dto.getId().intValue());
-            paciente.setNome(dto.getNome());
-            paciente.setDataNascimento(dto.getDataNascimento());
+            // Campos obrigatórios com validação
+            paciente.setId(dto.getId());
+            paciente.setNome(safeGetString(dto.getNome()));
+            paciente.setDataNascimento(safeGetString(dto.getDataNascimento()));
             paciente.setIdade(dto.getIdade());
-            paciente.setNomeDaMae(dto.getNomeDaMae());
-            paciente.setCpf(dto.getCpf());
-            paciente.setSus(dto.getSus());
-            paciente.setTelefone(dto.getTelefone());
-            paciente.setEndereco(dto.getEndereco());
-            paciente.setPaXMmhg(dto.getPaXMmhg());
+            paciente.setNomeDaMae(safeGetString(dto.getNomeDaMae()));
+            paciente.setCpf(safeGetString(dto.getCpf()));
+            paciente.setSus(safeGetString(dto.getSus()));
+            paciente.setTelefone(safeGetString(dto.getTelefone()));
+            paciente.setEndereco(safeGetString(dto.getEndereco()));
+            paciente.setPaXMmhg(safeGetString(dto.getPaXMmhg()));
 
-            // Campos Float - CORRIGIDO: conversão direta de Double para Float
+            // Campos Float com conversão segura
             paciente.setFcBpm(safeConvertDoubleToFloat(dto.getFcBpm()));
             paciente.setFrIbpm(safeConvertDoubleToFloat(dto.getFrIbpm()));
             paciente.setTemperaturaC(safeConvertDoubleToFloat(dto.getTemperaturaC()));
@@ -64,82 +63,253 @@ public class DtoMapper {
             return paciente;
 
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Erro ao converter PacienteDTO para Paciente", e);
+            LOGGER.log(Level.SEVERE, "Erro ao converter PacienteDTO para Paciente: " + e.getMessage(), e);
             return null;
         }
     }
     
     /**
-     * Converte EspecialidadeDTO para Especialidade
+     * Converte EspecialidadeDTO para Especialidade com validação robusta
      */
     public static Especialidade toModel(EspecialidadeDTO dto) {
         if (dto == null) {
+            LOGGER.warning("EspecialidadeDTO é null");
+            return null;
+        }
+        
+        if (dto.getId() == null) {
+            LOGGER.warning("EspecialidadeDTO com ID nulo será ignorada: " + safeGetString(dto.getNome()));
             return null;
         }
         
         try {
             Especialidade especialidade = new Especialidade();
             
-            // CORRIGIDO: verificar null antes de converter
-            if (dto.getId() != null) {
-                especialidade.setId(dto.getId().intValue());
-            }
-            
-            especialidade.setNome(dto.getNome());
-            
-            // CORRIGIDO: usar conversão segura para primitivos
-            especialidade.setAtendimentosRestantesHoje(
-                safeConvertIntegerToPrimitive(dto.getAtendimentosRestantesHoje())
-            );
-            especialidade.setAtendimentosTotaisHoje(
-                safeConvertIntegerToPrimitive(dto.getAtendimentosTotaisHoje())
-            );
+            especialidade.setId(dto.getId());
+            especialidade.setNome(safeGetString(dto.getNome()));
+            especialidade.setAtendimentosRestantesHoje(safeGetInteger(dto.getAtendimentosRestantesHoje()));
+            especialidade.setAtendimentosTotaisHoje(safeGetInteger(dto.getAtendimentosTotaisHoje()));
             
             return especialidade;
             
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Erro ao converter EspecialidadeDTO para Especialidade", e);
+            LOGGER.log(Level.SEVERE, "Erro ao converter EspecialidadeDTO para Especialidade: " + e.getMessage(), e);
             return null;
         }
     }
     
     /**
-     * Converte PacienteEspecialidadeDTO para PacienteEspecialidade
+     * Converte PacienteEspecialidadeDTO para PacienteEspecialidade com validação robusta
      */
     public static PacienteEspecialidade toModel(PacienteEspecialidadeDTO dto) {
         if (dto == null) {
+            LOGGER.warning("PacienteEspecialidadeDTO é null");
+            return null;
+        }
+        
+        if (dto.getPacienteId() == null || dto.getEspecialidadeId() == null) {
+            LOGGER.warning("PacienteEspecialidadeDTO com IDs nulos será ignorado");
             return null;
         }
         
         try {
             PacienteEspecialidade pacienteEspecialidade = new PacienteEspecialidade();
             
-            // CORRIGIDO: verificar null antes de converter
-            if (dto.getPacienteId() != null) {
-                pacienteEspecialidade.setPacienteId(dto.getPacienteId().intValue());
-            }
-            
-            if (dto.getEspecialidadeId() != null) {
-                pacienteEspecialidade.setEspecialidadeId(dto.getEspecialidadeId().intValue());
-            }
-            
-            pacienteEspecialidade.setDataAtendimento(dto.getDataAtendimento());
+            pacienteEspecialidade.setPacienteId(dto.getPacienteId());
+            pacienteEspecialidade.setEspecialidadeId(dto.getEspecialidadeId());
+            pacienteEspecialidade.setDataAtendimento(safeGetString(dto.getDataAtendimento()));
             
             return pacienteEspecialidade;
             
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Erro ao converter PacienteEspecialidadeDTO para PacienteEspecialidade", e);
+            LOGGER.log(Level.SEVERE, "Erro ao converter PacienteEspecialidadeDTO: " + e.getMessage(), e);
             return null;
         }
     }
     
-    // ===== CONVERSÕES MODEL → DTO =====
+    // ===== MÉTODOS UTILITÁRIOS SEGUROS =====
+    
+    /**
+     * Retorna string segura, nunca null
+     */
+    private static String safeGetString(String value) {
+        return value != null ? value.trim() : "";
+    }
+    
+    /**
+     * Retorna integer seguro, nunca null para primitivos
+     */
+    private static int safeGetInteger(Integer value) {
+        return value != null ? value : 0;
+    }
+    
+    /**
+     * Converte Double para Float de forma ultra-segura
+     */
+    private static Float safeConvertDoubleToFloat(Double value) {
+        if (value == null) {
+            return 0.0f; // Valor padrão para primitivos
+        }
+        
+        // Verifica se o valor está dentro do range válido para Float
+        if (value > Float.MAX_VALUE) {
+            LOGGER.warning("Valor Double muito grande para Float: " + value);
+            return Float.MAX_VALUE;
+        }
+        
+        if (value < -Float.MAX_VALUE) {
+            LOGGER.warning("Valor Double muito pequeno para Float: " + value);
+            return -Float.MAX_VALUE;
+        }
+        
+        return value.floatValue();
+    }
+    
+    /**
+     * Converte Float para Double de forma ultra-segura
+     */
+    private static Double safeConvertFloatToDouble(Float value) {
+        if (value == null) {
+            return 0.0; // Valor padrão
+        }
+        return value.doubleValue();
+    }
+    
+    /**
+     * Validação robusta de lista
+     */
+    public static boolean isValidList(List<?> list) {
+        return list != null && !list.isEmpty();
+    }
+    
+    /**
+     * Conversão segura de listas com logging detalhado
+     */
+    public static List<Paciente> toModelList(List<PacienteDTO> dtoList) {
+        List<Paciente> result = new ArrayList<>();
+        
+        if (!isValidList(dtoList)) {
+            LOGGER.info("Lista de PacienteDTO vazia ou nula");
+            return result;
+        }
+        
+        int sucessos = 0;
+        int falhas = 0;
+        
+        for (int i = 0; i < dtoList.size(); i++) {
+            try {
+                PacienteDTO dto = dtoList.get(i);
+                if (dto == null) {
+                    LOGGER.warning("PacienteDTO na posição " + i + " é null");
+                    falhas++;
+                    continue;
+                }
+                
+                Paciente paciente = toModel(dto);
+                if (paciente != null && paciente.isValid()) {
+                    result.add(paciente);
+                    sucessos++;
+                } else {
+                    LOGGER.warning("Falha ao converter ou validar PacienteDTO na posição " + i);
+                    falhas++;
+                }
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Erro ao processar PacienteDTO na posição " + i, e);
+                falhas++;
+            }
+        }
+        
+        LOGGER.info(String.format("Conversão concluída: %d sucessos, %d falhas de %d total", 
+                                 sucessos, falhas, dtoList.size()));
+        return result;
+    }
+    
+    // Método similar para EspecialidadeDTO
+    public static List<Especialidade> toEspecialidadeModelList(List<EspecialidadeDTO> dtoList) {
+        List<Especialidade> result = new ArrayList<>();
+        
+        if (!isValidList(dtoList)) {
+            LOGGER.info("Lista de EspecialidadeDTO vazia ou nula");
+            return result;
+        }
+        
+        int sucessos = 0;
+        int falhas = 0;
+        
+        for (int i = 0; i < dtoList.size(); i++) {
+            try {
+                EspecialidadeDTO dto = dtoList.get(i);
+                if (dto == null) {
+                    LOGGER.warning("EspecialidadeDTO na posição " + i + " é null");
+                    falhas++;
+                    continue;
+                }
+                
+                Especialidade especialidade = toModel(dto);
+                if (especialidade != null) {
+                    result.add(especialidade);
+                    sucessos++;
+                } else {
+                    falhas++;
+                }
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Erro ao processar EspecialidadeDTO na posição " + i, e);
+                falhas++;
+            }
+        }
+        
+        LOGGER.info(String.format("Conversão Especialidades: %d sucessos, %d falhas de %d total", 
+                                 sucessos, falhas, dtoList.size()));
+        return result;
+    }
+    
+    // Método para PacienteEspecialidadeDTO
+    public static List<PacienteEspecialidade> toPacienteEspecialidadeModelList(List<PacienteEspecialidadeDTO> dtoList) {
+        List<PacienteEspecialidade> result = new ArrayList<>();
+        
+        if (!isValidList(dtoList)) {
+            LOGGER.info("Lista de PacienteEspecialidadeDTO vazia ou nula");
+            return result;
+        }
+        
+        int sucessos = 0;
+        int falhas = 0;
+        
+        for (int i = 0; i < dtoList.size(); i++) {
+            try {
+                PacienteEspecialidadeDTO dto = dtoList.get(i);
+                if (dto == null) {
+                    LOGGER.warning("PacienteEspecialidadeDTO na posição " + i + " é null");
+                    falhas++;
+                    continue;
+                }
+                
+                PacienteEspecialidade associacao = toModel(dto);
+                if (associacao != null && associacao.isValid()) {
+                    result.add(associacao);
+                    sucessos++;
+                } else {
+                    falhas++;
+                }
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Erro ao processar PacienteEspecialidadeDTO na posição " + i, e);
+                falhas++;
+            }
+        }
+        
+        LOGGER.info(String.format("Conversão PacienteEspecialidade: %d sucessos, %d falhas de %d total", 
+                                 sucessos, falhas, dtoList.size()));
+        return result;
+    }
+    
+    // ===== CONVERSÕES MODEL → DTO (MÉTODOS FALTANTES) =====
     
     /**
      * Converte Paciente para PacienteDTO (para envio à API)
      */
     public static PacienteDTO toDto(Paciente model) {
         if (model == null) {
+            LOGGER.warning("Paciente é null para conversão");
             return null;
         }
         
@@ -147,17 +317,17 @@ public class DtoMapper {
             PacienteDTO dto = new PacienteDTO();
             
             dto.setId(model.getId());
-            dto.setNome(model.getNome());
-            dto.setDataNascimento(model.getDataNascimento());
+            dto.setNome(safeGetString(model.getNome()));
+            dto.setDataNascimento(safeGetString(model.getDataNascimento()));
             dto.setIdade(model.getIdade());
-            dto.setNomeDaMae(model.getNomeDaMae());
-            dto.setCpf(model.getCpf());
-            dto.setSus(model.getSus());
-            dto.setTelefone(model.getTelefone());
-            dto.setEndereco(model.getEndereco());
-            dto.setPaXMmhg(model.getPaXMmhg());
+            dto.setNomeDaMae(safeGetString(model.getNomeDaMae()));
+            dto.setCpf(safeGetString(model.getCpf()));
+            dto.setSus(safeGetString(model.getSus()));
+            dto.setTelefone(safeGetString(model.getTelefone()));
+            dto.setEndereco(safeGetString(model.getEndereco()));
+            dto.setPaXMmhg(safeGetString(model.getPaXMmhg()));
             
-            // CORRIGIDO: conversão direta de Float para Double
+            // Conversão de Float para Double
             dto.setFcBpm(safeConvertFloatToDouble(model.getFcBpm()));
             dto.setFrIbpm(safeConvertFloatToDouble(model.getFrIbpm()));
             dto.setTemperaturaC(safeConvertFloatToDouble(model.getTemperaturaC()));
@@ -170,7 +340,7 @@ public class DtoMapper {
             return dto;
             
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Erro ao converter Paciente para PacienteDTO", e);
+            LOGGER.log(Level.SEVERE, "Erro ao converter Paciente para PacienteDTO: " + e.getMessage(), e);
             return null;
         }
     }
@@ -180,6 +350,7 @@ public class DtoMapper {
      */
     public static EspecialidadeDTO toDto(Especialidade model) {
         if (model == null) {
+            LOGGER.warning("Especialidade é null para conversão");
             return null;
         }
         
@@ -187,14 +358,14 @@ public class DtoMapper {
             EspecialidadeDTO dto = new EspecialidadeDTO();
             
             dto.setId(model.getId());
-            dto.setNome(model.getNome());
+            dto.setNome(safeGetString(model.getNome()));
             dto.setAtendimentosRestantesHoje(model.getAtendimentosRestantesHoje());
             dto.setAtendimentosTotaisHoje(model.getAtendimentosTotaisHoje());
             
             return dto;
             
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Erro ao converter Especialidade para EspecialidadeDTO", e);
+            LOGGER.log(Level.SEVERE, "Erro ao converter Especialidade para EspecialidadeDTO: " + e.getMessage(), e);
             return null;
         }
     }
@@ -204,6 +375,7 @@ public class DtoMapper {
      */
     public static PacienteEspecialidadeDTO toDto(PacienteEspecialidade model) {
         if (model == null) {
+            LOGGER.warning("PacienteEspecialidade é null para conversão");
             return null;
         }
         
@@ -212,82 +384,14 @@ public class DtoMapper {
             
             dto.setPacienteId(model.getPacienteId());
             dto.setEspecialidadeId(model.getEspecialidadeId());
-            dto.setDataAtendimento(model.getDataAtendimento());
+            dto.setDataAtendimento(safeGetString(model.getDataAtendimento()));
             
             return dto;
             
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Erro ao converter PacienteEspecialidade para PacienteEspecialidadeDTO", e);
+            LOGGER.log(Level.SEVERE, "Erro ao converter PacienteEspecialidade para PacienteEspecialidadeDTO: " + e.getMessage(), e);
             return null;
         }
-    }
-    
-    // ===== MÉTODOS DE CONVERSÃO DE LISTA DTO → MODEL =====
-    
-    public static List<Paciente> toModelList(List<PacienteDTO> dtoList) {
-        if (dtoList == null || dtoList.isEmpty()) {
-            return new ArrayList<>();
-        }
-        
-        List<Paciente> pacientes = new ArrayList<>();
-        int sucessos = 0;
-        
-        for (PacienteDTO dto : dtoList) {
-            Paciente paciente = toModel(dto);
-            if (paciente != null) {
-                pacientes.add(paciente);
-                sucessos++;
-            } else {
-                LOGGER.warning("Falha ao converter PacienteDTO: " + dto);
-            }
-        }
-        
-        LOGGER.info("Convertidos " + sucessos + " pacientes de " + dtoList.size() + " DTOs");
-        return pacientes;
-    }
-    
-    public static List<Especialidade> toEspecialidadeModelList(List<EspecialidadeDTO> dtoList) {
-        if (dtoList == null || dtoList.isEmpty()) {
-            return new ArrayList<>();
-        }
-        
-        List<Especialidade> especialidades = new ArrayList<>();
-        int sucessos = 0;
-        
-        for (EspecialidadeDTO dto : dtoList) {
-            Especialidade especialidade = toModel(dto);
-            if (especialidade != null) {
-                especialidades.add(especialidade);
-                sucessos++;
-            } else {
-                LOGGER.warning("Falha ao converter EspecialidadeDTO: " + dto);
-            }
-        }
-        
-        LOGGER.info("Convertidas " + sucessos + " especialidades de " + dtoList.size() + " DTOs");
-        return especialidades;
-    }
-    
-    public static List<PacienteEspecialidade> toPacienteEspecialidadeModelList(List<PacienteEspecialidadeDTO> dtoList) {
-        if (dtoList == null || dtoList.isEmpty()) {
-            return new ArrayList<>();
-        }
-        
-        List<PacienteEspecialidade> associacoes = new ArrayList<>();
-        int sucessos = 0;
-        
-        for (PacienteEspecialidadeDTO dto : dtoList) {
-            PacienteEspecialidade associacao = toModel(dto);
-            if (associacao != null) {
-                associacoes.add(associacao);
-                sucessos++;
-            } else {
-                LOGGER.warning("Falha ao converter PacienteEspecialidadeDTO: " + dto);
-            }
-        }
-        
-        LOGGER.info("Convertidas " + sucessos + " associações de " + dtoList.size() + " DTOs");
-        return associacoes;
     }
     
     // ===== MÉTODOS DE CONVERSÃO DE LISTA MODEL → DTO =====
@@ -296,108 +400,126 @@ public class DtoMapper {
      * Converte lista de Paciente para lista de PacienteDTO
      */
     public static List<PacienteDTO> toPacienteDtoList(List<Paciente> modelList) {
-        if (modelList == null || modelList.isEmpty()) {
-            return new ArrayList<>();
+        List<PacienteDTO> result = new ArrayList<>();
+        
+        if (!isValidList(modelList)) {
+            LOGGER.info("Lista de Paciente vazia ou nula");
+            return result;
         }
         
-        List<PacienteDTO> dtoList = new ArrayList<>();
         int sucessos = 0;
+        int falhas = 0;
         
-        for (Paciente model : modelList) {
-            PacienteDTO dto = toDto(model);
-            if (dto != null) {
-                dtoList.add(dto);
-                sucessos++;
-            } else {
-                LOGGER.warning("Falha ao converter Paciente: " + model);
+        for (int i = 0; i < modelList.size(); i++) {
+            try {
+                Paciente model = modelList.get(i);
+                if (model == null) {
+                    LOGGER.warning("Paciente na posição " + i + " é null");
+                    falhas++;
+                    continue;
+                }
+                
+                PacienteDTO dto = toDto(model);
+                if (dto != null) {
+                    result.add(dto);
+                    sucessos++;
+                } else {
+                    falhas++;
+                }
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Erro ao processar Paciente na posição " + i, e);
+                falhas++;
             }
         }
         
-        LOGGER.info("Convertidos " + sucessos + " pacientes para DTO de " + modelList.size() + " modelos");
-        return dtoList;
+        LOGGER.info(String.format("Conversão Paciente para DTO: %d sucessos, %d falhas de %d total", 
+                                 sucessos, falhas, modelList.size()));
+        return result;
     }
     
     /**
      * Converte lista de Especialidade para lista de EspecialidadeDTO
      */
     public static List<EspecialidadeDTO> toEspecialidadeDtoList(List<Especialidade> modelList) {
-        if (modelList == null || modelList.isEmpty()) {
-            return new ArrayList<>();
+        List<EspecialidadeDTO> result = new ArrayList<>();
+        
+        if (!isValidList(modelList)) {
+            LOGGER.info("Lista de Especialidade vazia ou nula");
+            return result;
         }
         
-        List<EspecialidadeDTO> dtoList = new ArrayList<>();
         int sucessos = 0;
+        int falhas = 0;
         
-        for (Especialidade model : modelList) {
-            EspecialidadeDTO dto = toDto(model);
-            if (dto != null) {
-                dtoList.add(dto);
-                sucessos++;
-            } else {
-                LOGGER.warning("Falha ao converter Especialidade: " + model);
+        for (int i = 0; i < modelList.size(); i++) {
+            try {
+                Especialidade model = modelList.get(i);
+                if (model == null) {
+                    LOGGER.warning("Especialidade na posição " + i + " é null");
+                    falhas++;
+                    continue;
+                }
+                
+                EspecialidadeDTO dto = toDto(model);
+                if (dto != null) {
+                    result.add(dto);
+                    sucessos++;
+                } else {
+                    falhas++;
+                }
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Erro ao processar Especialidade na posição " + i, e);
+                falhas++;
             }
         }
         
-        LOGGER.info("Convertidas " + sucessos + " especialidades para DTO de " + modelList.size() + " modelos");
-        return dtoList;
+        LOGGER.info(String.format("Conversão Especialidade para DTO: %d sucessos, %d falhas de %d total", 
+                                 sucessos, falhas, modelList.size()));
+        return result;
     }
     
     /**
      * Converte lista de PacienteEspecialidade para lista de PacienteEspecialidadeDTO
      */
     public static List<PacienteEspecialidadeDTO> toPacienteEspecialidadeDtoList(List<PacienteEspecialidade> modelList) {
-        if (modelList == null || modelList.isEmpty()) {
-            return new ArrayList<>();
+        List<PacienteEspecialidadeDTO> result = new ArrayList<>();
+        
+        if (!isValidList(modelList)) {
+            LOGGER.info("Lista de PacienteEspecialidade vazia ou nula");
+            return result;
         }
         
-        List<PacienteEspecialidadeDTO> dtoList = new ArrayList<>();
         int sucessos = 0;
+        int falhas = 0;
         
-        for (PacienteEspecialidade model : modelList) {
-            PacienteEspecialidadeDTO dto = toDto(model);
-            if (dto != null) {
-                dtoList.add(dto);
-                sucessos++;
-            } else {
-                LOGGER.warning("Falha ao converter PacienteEspecialidade: " + model);
+        for (int i = 0; i < modelList.size(); i++) {
+            try {
+                PacienteEspecialidade model = modelList.get(i);
+                if (model == null) {
+                    LOGGER.warning("PacienteEspecialidade na posição " + i + " é null");
+                    falhas++;
+                    continue;
+                }
+                
+                PacienteEspecialidadeDTO dto = toDto(model);
+                if (dto != null) {
+                    result.add(dto);
+                    sucessos++;
+                } else {
+                    falhas++;
+                }
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Erro ao processar PacienteEspecialidade na posição " + i, e);
+                falhas++;
             }
         }
         
-        LOGGER.info("Convertidas " + sucessos + " associações para DTO de " + modelList.size() + " modelos");
-        return dtoList;
+        LOGGER.info(String.format("Conversão PacienteEspecialidade para DTO: %d sucessos, %d falhas de %d total", 
+                                 sucessos, falhas, modelList.size()));
+        return result;
     }
     
-    // ===== MÉTODOS UTILITÁRIOS CORRIGIDOS =====
-    
-    /**
-     * Converte Double para Float de forma segura
-     * Retorna null se o valor for null (não força um valor padrão)
-     */
-    private static Float safeConvertDoubleToFloat(Double value) {
-        if (value == null) {
-            return null; // Mantém null se a entrada for null
-        }
-        return value.floatValue();
-    }
-    
-    /**
-     * Converte Float para Double de forma segura
-     * Retorna null se o valor for null (não força um valor padrão)
-     */
-    private static Double safeConvertFloatToDouble(Float value) {
-        if (value == null) {
-            return null; // Mantém null se a entrada for null
-        }
-        return value.doubleValue();
-    }
-    
-    /**
-     * Converte Integer wrapper para int primitivo de forma segura
-     * Retorna 0 se o valor for null (valor padrão seguro para primitivos)
-     */
-    private static int safeConvertIntegerToPrimitive(Integer value) {
-        return value != null ? value.intValue() : 0;
-    }
+    // ===== MÉTODOS UTILITÁRIOS ADICIONAIS =====
     
     /**
      * Valida se um PacienteDTO tem campos mínimos necessários
@@ -430,16 +552,15 @@ public class DtoMapper {
                dto.getEspecialidadeId() > 0;
     }
     
-    // Demais métodos utilitários mantidos iguais...
-    
+    /**
+     * Copia dados entre objetos Paciente
+     */
     public static void copyPacienteData(Paciente origem, Paciente destino) {
         if (origem == null || destino == null) {
             return;
         }
         
-        if (origem.getId() != null) {
-            destino.setId(origem.getId().intValue());
-        }
+        destino.setId(origem.getId());
         destino.setNome(origem.getNome());
         destino.setDataNascimento(origem.getDataNascimento());
         destino.setIdade(origem.getIdade());
@@ -459,14 +580,15 @@ public class DtoMapper {
         destino.setImc(origem.getImc());
     }
     
+    /**
+     * Copia dados entre objetos Especialidade
+     */
     public static void copyEspecialidadeData(Especialidade origem, Especialidade destino) {
         if (origem == null || destino == null) {
             return;
         }
         
-        if (origem.getId() != null) {
-            destino.setId(origem.getId().intValue());
-        }
+        destino.setId(origem.getId());
         destino.setNome(origem.getNome());
         destino.setAtendimentosRestantesHoje(origem.getAtendimentosRestantesHoje());
         destino.setAtendimentosTotaisHoje(origem.getAtendimentosTotaisHoje());

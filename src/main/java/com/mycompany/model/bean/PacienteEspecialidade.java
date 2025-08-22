@@ -40,11 +40,21 @@ public class PacienteEspecialidade {
     public void setDataAtendimento(String dataAtendimento) {
         this.dataAtendimento = dataAtendimento;
     }
+    
+    public boolean isValid() {
+        return pacienteId != null && 
+               especialidadeId != null && 
+               pacienteId > 0 && 
+               especialidadeId > 0;
+    }
 
     @Override
     public String toString() {
-        return "PacienteEspecialidade{" + "pacienteId=" + pacienteId + ", especialidadeId=" + especialidadeId + ", dataAtendimento=" + dataAtendimento + '}';
+        return "PacienteEspecialidade{" + 
+               "pacienteId=" + (pacienteId != null ? pacienteId : "N/A") + 
+               ", especialidadeId=" + (especialidadeId != null ? especialidadeId : "N/A") + 
+               ", dataAtendimento='" + getDataAtendimento() + "'" + 
+               '}';
     }
-    
-    
+
 }
