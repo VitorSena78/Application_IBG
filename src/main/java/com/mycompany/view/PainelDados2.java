@@ -385,58 +385,150 @@ public class PainelDados2 extends javax.swing.JPanel {
     
     // Método para atualizar um paciente existente
     public void atualizarPaciente(Paciente pacienteAtualizado) {
-        java.text.SimpleDateFormat formatoDesejado = new java.text.SimpleDateFormat("dd/MM/yyyy");
-        java.text.SimpleDateFormat formatoISO = new java.text.SimpleDateFormat("yyyy-MM-dd");
-        String dataFormatada = "";
-        
-        // Formata a data de nascimento, se disponível
-        if (pacienteAtualizado.getDataNascimento() != null && !pacienteAtualizado.getDataNascimento().isEmpty()) {
-            try {
-                java.util.Date data;
+        System.out.println("=== atualizarPaciente chamado PainelDados2 ===");
+        System.out.println("Paciente a atualizar: " + 
+                          (pacienteAtualizado != null ? 
+                           pacienteAtualizado.getNome() + " (ID: " + pacienteAtualizado.getId() + ")" : 
+                           "NULL"));
 
-                try {
-                    data = formatoDesejado.parse(pacienteAtualizado.getDataNascimento());
-                } catch (java.text.ParseException ex1) {
-                    data = formatoISO.parse(pacienteAtualizado.getDataNascimento());
+        if (pacienteAtualizado == null || pacienteAtualizado.getId() == null) {
+            System.err.println("❌ Paciente inválido para atualização");
+            return;
+        }
+
+        // EXECUTAR NA EDT PARA GARANTIR THREAD SAFETY
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Preparar data formatada
+                java.text.SimpleDateFormat formatoDesejado = new java.text.SimpleDateFormat("dd/MM/yyyy");
+                java.text.SimpleDateFormat formatoISO = new java.text.SimpleDateFormat("yyyy-MM-dd");
+                String dataFormatada = "";
+
+                if (pacienteAtualizado.getDataNascimento() != null && !pacienteAtualizado.getDataNascimento().isEmpty()) {
+                    try {
+                        java.util.Date data;
+                        try {
+                            data = formatoDesejado.parse(pacienteAtualizado.getDataNascimento());
+                        } catch (java.text.ParseException ex1) {
+                            data = formatoISO.parse(pacienteAtualizado.getDataNascimento());
+                        }
+                        dataFormatada = formatoDesejado.format(data);
+                    } catch (java.text.ParseException e) {
+                        System.err.println("Erro ao formatar data: " + e.getMessage());
+                        dataFormatada = pacienteAtualizado.getDataNascimento(); // Usar valor original
+                    }
                 }
 
-                dataFormatada = formatoDesejado.format(data);
-            } catch (java.text.ParseException e) {
+                //  Buscar por ID diretamente na tabela
+                boolean pacienteEncontrado = false;
+                int linhaEncontrada = -1;
+
+                // Procurar pela linha correta baseada no ID (coluna 8)
+                for (int row = 0; row < tableModel.getRowCount(); row++) {
+                    Object idNaTabela = tableModel.getValueAt(row, 8); // Coluna 8 = ID
+
+                    if (idNaTabela != null) {
+                        try {
+                            int idTabelaInt = Integer.parseInt(idNaTabela.toString());
+                            if (idTabelaInt == pacienteAtualizado.getId()) {
+                                linhaEncontrada = row;
+                                pacienteEncontrado = true;
+                                break;
+                            }
+                        } catch (NumberFormatException e) {
+                            System.err.println("Erro ao converter ID da tabela: " + idNaTabela);
+                            continue;
+                        }
+                    }
+                }
+
+                if (pacienteEncontrado) {
+                    System.out.println("✅ Paciente encontrado na linha " + linhaEncontrada + " - atualizando...");
+
+                    // Atualizar TODOS os campos na linha encontrada
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getNome() != null ? pacienteAtualizado.getNome() : "", 
+                        linhaEncontrada, 0); // Nome
+
+                    tableModel.setValueAt(dataFormatada, linhaEncontrada, 1); // Data
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getIdade() != null ? pacienteAtualizado.getIdade().toString() : "", 
+                        linhaEncontrada, 2); // Idade
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getNomeDaMae() != null ? pacienteAtualizado.getNomeDaMae() : "", 
+                        linhaEncontrada, 3); // Mãe
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getCpf() != null ? pacienteAtualizado.getCpf() : "", 
+                        linhaEncontrada, 4); // CPF
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getSus() != null ? pacienteAtualizado.getSus() : "", 
+                        linhaEncontrada, 5); // SUS
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getTelefone() != null ? pacienteAtualizado.getTelefone() : "", 
+                        linhaEncontrada, 6); // Telefone
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getEndereco() != null ? pacienteAtualizado.getEndereco() : "", 
+                        linhaEncontrada, 7); // Endereço
+
+                    tableModel.setValueAt(
+                        String.valueOf(pacienteAtualizado.getId()), 
+                        linhaEncontrada, 8); // ID
+
+                    // FORÇAR NOTIFICAÇÃO DA MUDANÇA
+                    tableModel.fireTableRowsUpdated(linhaEncontrada, linhaEncontrada);
+
+                    // Atualizar também a lista local de pacientes
+                    synchronized (pacientes) {
+                        for (int i = 0; i < pacientes.size(); i++) {
+                            if (pacientes.get(i).getId() != null && 
+                                pacientes.get(i).getId().equals(pacienteAtualizado.getId())) {
+                                pacientes.set(i, pacienteAtualizado);
+                                System.out.println("✅ Lista local de pacientes também atualizada");
+                                break;
+                            }
+                        }
+                    }
+
+                    // FORÇAR REPAINT DA TABELA
+                    jTable1.revalidate();
+                    jTable1.repaint();
+
+                    // Destacar visualmente a linha atualizada (opcional)
+                    try {
+                        jTable1.setRowSelectionInterval(linhaEncontrada, linhaEncontrada);
+                        jTable1.scrollRectToVisible(jTable1.getCellRect(linhaEncontrada, 0, true));
+                        System.out.println("✅ Linha " + linhaEncontrada + " destacada visualmente");
+                    } catch (Exception e) {
+                        // Ignore se houver problema com a seleção visual
+                        System.out.println("⚠️ Não foi possível destacar a linha: " + e.getMessage());
+                    }
+
+                    System.out.println("✅ Paciente atualizado com sucesso na tabela: " + 
+                                      pacienteAtualizado.getNome() + " (linha " + linhaEncontrada + ")");
+
+                } else {
+                    System.err.println("❌ Paciente ID " + pacienteAtualizado.getId() + 
+                                      " não encontrado na tabela para atualização");
+
+                    // Log adicional para debug
+                    System.err.println("⚠️ DEBUG: IDs presentes na tabela:");
+                    for (int row = 0; row < Math.min(5, tableModel.getRowCount()); row++) {
+                        Object idNaTabela = tableModel.getValueAt(row, 8);
+                        System.err.println("    Linha " + row + ": ID = " + idNaTabela);
+                    }
+                }
+
+            } catch (Exception e) {
+                System.err.println("❌ Erro inesperado ao atualizar paciente na tabela: " + e.getMessage());
                 e.printStackTrace();
             }
-        }
-
-        for (int i = 0; i < pacientes.size(); i++) {
-            Paciente pacienteNaLista = pacientes.get(i);
-
-            if (pacienteNaLista.getId() == pacienteAtualizado.getId()) {
-                // Verifica se o nome da tabela na linha corresponde ao nome da lista
-                Object nomeNaTabela = tableModel.getValueAt(i, 0); // Coluna 0 = Nome
-                String nomeEsperado = pacienteNaLista.getNome() != null ? pacienteNaLista.getNome() : "";
-
-                if (nomeNaTabela != null && nomeNaTabela.toString().equals(nomeEsperado)) {
-                    // Atualiza os dados da tabela
-                    tableModel.setValueAt(pacienteAtualizado.getNome() != null ? pacienteAtualizado.getNome() : "", i, 0); // Nome
-                    tableModel.setValueAt(dataFormatada, i, 1); // Data Nasc.
-                    tableModel.setValueAt(pacienteAtualizado.getIdade() != null ? pacienteAtualizado.getIdade().toString() : "", i, 2); // Idade
-                    tableModel.setValueAt(pacienteAtualizado.getNomeDaMae() != null ? pacienteAtualizado.getNomeDaMae() : "", i, 3); // Mãe
-                    tableModel.setValueAt(pacienteAtualizado.getCpf() != null ? pacienteAtualizado.getCpf() : "", i, 4); // CPF
-                    tableModel.setValueAt(pacienteAtualizado.getSus() != null ? pacienteAtualizado.getSus() : "", i, 5); // SUS
-                    tableModel.setValueAt(pacienteAtualizado.getTelefone() != null ? pacienteAtualizado.getTelefone() : "", i, 6); // Telefone
-                    tableModel.setValueAt(pacienteAtualizado.getEndereco() != null ? pacienteAtualizado.getEndereco() : "", i, 7); // Endereço
-                    tableModel.setValueAt(String.valueOf(pacienteAtualizado.getId()), i, 8); // ID
-
-                    // Atualiza a lista local
-                    pacientes.set(i, pacienteAtualizado);
-
-                    // Destaca visualmente a linha atualizada
-                    jTable1.setRowSelectionInterval(i, i);
-                    jTable1.scrollRectToVisible(jTable1.getCellRect(i, 0, true));
-                }
-
-                break;
-            }
-        }
+        });
     }
     
     // Método para remover um paciente

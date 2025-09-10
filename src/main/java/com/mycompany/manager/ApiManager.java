@@ -158,20 +158,54 @@ public class ApiManager {
      * Reconecta à API e WebSocket se necessário
      */
     public void reconectar() {
-        LOGGER.info("Tentando reconectar...");
-        
-        // Verifica API
-        verificarDisponibilidadeApi();
-        
-        // Reconecta WebSocket se necessário
-        if (apiDisponivel && (!webSocketConectado || !webSocketClient.isConnected())) {
-            inicializarWebSocket();
-        }
-        
-        if (apiDisponivel && webSocketConectado) {
-            LOGGER.info("✓ Reconexão bem-sucedida!");
-        } else {
-            LOGGER.warning("✗ Reconexão parcial ou falhou");
+        LOGGER.info("Iniciando processo de reconexão completa...");
+
+        try {
+            // 1. Verificar e reconectar API
+            LOGGER.info("1/3 - Verificando API...");
+            verificarDisponibilidadeApi();
+
+            // 2. Reconectar WebSocket se necessário
+            LOGGER.info("2/3 - Verificando WebSocket...");
+            if (apiDisponivel) {
+                // Se WebSocket não estiver conectado, tentar reconectar
+                if (webSocketClient == null || !webSocketClient.isConnected()) {
+                    LOGGER.info("WebSocket desconectado - tentando reconectar...");
+
+                    // Fechar conexão antiga se existir
+                    if (webSocketClient != null) {
+                        try {
+                            webSocketClient.disconnect();
+                        } catch (Exception e) {
+                            LOGGER.log(Level.WARNING, "Erro ao fechar WebSocket anterior", e);
+                        }
+                    }
+
+                    // Criar nova conexão
+                    inicializarWebSocket();
+
+                } else {
+                    LOGGER.info("WebSocket já conectado");
+                    webSocketConectado = true;
+                }
+            }
+
+            // 3. Atualizar status final
+            LOGGER.info("3/3 - Atualizando status final...");
+            webSocketConectado = (webSocketClient != null && webSocketClient.isConnected());
+
+            // Log do resultado
+            if (apiDisponivel && webSocketConectado) {
+                LOGGER.info("✅ Reconexão completa bem-sucedida! API: OK, WebSocket: OK");
+            } else if (apiDisponivel) {
+                LOGGER.info("⚠️ Reconexão parcial - API: OK, WebSocket: FALHOU");
+            } else {
+                LOGGER.warning("❌ Falha na reconexão - API e WebSocket indisponíveis");
+            }
+
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Erro durante reconexão", e);
+            throw new RuntimeException("Falha no processo de reconexão", e);
         }
     }
     

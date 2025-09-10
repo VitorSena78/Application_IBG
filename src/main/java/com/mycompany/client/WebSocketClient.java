@@ -1,5 +1,6 @@
 package com.mycompany.client;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mycompany.client.dto.PacienteDTO;
@@ -22,7 +23,7 @@ import javax.swing.SwingUtilities;
 
 /**
  * Cliente WebSocket para receber notificações em tempo real da API
- * Versão adaptada para trabalhar com DTOs
+ * Versão adaptada para trabalhar com DTOs e notificações em lote
  */
 @ClientEndpoint
 public class WebSocketClient {
@@ -32,20 +33,16 @@ public class WebSocketClient {
     private final ObjectMapper objectMapper;
     private final String serverUrl;
     
-    // Listeners para diferentes tipos de mudanças
     private final List<PacienteChangeListener> pacienteListeners = new ArrayList<>();
     private final List<PacienteEspecialidadeChangeListener> pacienteEspecialidadeListeners = new ArrayList<>();
     
-    // Status da conexão
     private volatile boolean connected = false;
     private volatile boolean reconnecting = false;
     private volatile boolean shouldReconnect = true;
     
-    // Para controle de conexão síncrona
     private CountDownLatch connectionLatch;
     
     public WebSocketClient(String serverUrl) {
-        // Garantir que a URL está no formato correto
         if (serverUrl.startsWith("http://")) {
             this.serverUrl = serverUrl.replace("http://", "ws://");
         } else if (serverUrl.startsWith("https://")) {
@@ -61,30 +58,21 @@ public class WebSocketClient {
         LOGGER.info("WebSocketClient criado com URL: " + this.serverUrl);
     }
     
-    /**
-     * Conecta ao servidor WebSocket com timeout
-     */
     public boolean connect() {
         return connect(10000); // 10 segundos de timeout padrão
     }
     
-    /**
-     * Conecta ao servidor WebSocket com timeout específico
-     */
     public boolean connect(long timeoutMs) {
         try {
             LOGGER.info("Tentando conectar ao WebSocket...");
             shouldReconnect = true;
             
-            // Preparar latch para aguardar conexão
             connectionLatch = new CountDownLatch(1);
             
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
             
-            // Configurar timeout do container
             container.setDefaultMaxSessionIdleTimeout(30000);
             
-            // URL para o endpoint WebSocket
             String wsUrl = serverUrl;
             if (!wsUrl.endsWith("/")) {
                 wsUrl += "/";
@@ -95,10 +83,8 @@ public class WebSocketClient {
             
             LOGGER.info("Conectando ao WebSocket: " + serverEndpoint);
             
-            // Conecta ao servidor
             session = container.connectToServer(this, serverEndpoint);
             
-            // Aguarda a conexão ser estabelecida ou timeout
             boolean connectionEstablished = connectionLatch.await(timeoutMs, TimeUnit.MILLISECONDS);
             
             if (connectionEstablished && connected) {
@@ -117,9 +103,6 @@ public class WebSocketClient {
         }
     }
     
-    /**
-     * Desconecta do servidor WebSocket
-     */
     public void disconnect() {
         shouldReconnect = false;
         reconnecting = false;
@@ -135,8 +118,6 @@ public class WebSocketClient {
         connected = false;
     }
     
-    // Eventos do WebSocket
-    
     @OnOpen
     public void onOpen(Session session) {
         this.session = session;
@@ -145,12 +126,10 @@ public class WebSocketClient {
         
         LOGGER.info("✓ Conexão WebSocket estabelecida: " + session.getId());
         
-        // Libera o latch para indicar que a conexão foi estabelecida
         if (connectionLatch != null) {
             connectionLatch.countDown();
         }
         
-        // Envia mensagem de registro para receber notificações
         sendMessage("{\"action\":\"subscribe\",\"types\":[\"paciente\",\"paciente_especialidade\"]}");
     }
     
@@ -158,7 +137,6 @@ public class WebSocketClient {
     public void onMessage(String message) {
         LOGGER.info("← Mensagem recebida via WebSocket: " + message);
         
-        // Processa a mensagem em thread separada para não bloquear o WebSocket
         SwingUtilities.invokeLater(() -> processWebSocketMessage(message));
     }
     
@@ -166,14 +144,12 @@ public class WebSocketClient {
     public void onClose(Session session, CloseReason closeReason) {
         this.connected = false;
         LOGGER.info("✗ Conexão WebSocket fechada: " + closeReason.getReasonPhrase() + 
-                   " (código: " + closeReason.getCloseCode() + ")");
+                     " (código: " + closeReason.getCloseCode() + ")");
         
-        // Libera o latch em caso de falha na conexão
         if (connectionLatch != null) {
             connectionLatch.countDown();
         }
         
-        // Tenta reconectar automaticamente se não foi fechamento intencional
         if (shouldReconnect && !reconnecting && 
             closeReason.getCloseCode() != CloseReason.CloseCodes.NORMAL_CLOSURE) {
             scheduleReconnect();
@@ -185,7 +161,6 @@ public class WebSocketClient {
         this.connected = false;
         LOGGER.log(Level.SEVERE, "⚠ Erro na conexão WebSocket", throwable);
         
-        // Libera o latch em caso de erro na conexão
         if (connectionLatch != null) {
             connectionLatch.countDown();
         }
@@ -195,150 +170,230 @@ public class WebSocketClient {
         }
     }
     
-    /**
-     * Processa mensagens recebidas via WebSocket
-     */
     private void processWebSocketMessage(String message) {
         try {
+            LOGGER.info("=== PROCESSANDO MENSAGEM WEBSOCKET ===");
+            LOGGER.info("Mensagem completa: " + message);
+
             JsonNode messageNode = objectMapper.readTree(message);
-            
-            // Se for mensagem do sistema, apenas loga
+
             if (messageNode.has("type") && "system".equals(messageNode.get("type").asText())) {
                 LOGGER.info("Mensagem do sistema: " + messageNode.get("message").asText());
                 return;
             }
-            
-            // Verifica se tem os campos obrigatórios para notificações
-            if (!messageNode.has("type") || !messageNode.has("action") || !messageNode.has("data")) {
-                LOGGER.warning("Mensagem WebSocket inválida - campos obrigatórios ausentes: " + message);
+
+            if (!messageNode.has("type") || !messageNode.has("action") || !messageNode.has("data") && !"DELETED_BATCH".equals(messageNode.get("action").asText())) {
+                LOGGER.warning("Mensagem WebSocket inválida - campos obrigatórios ausentes");
+                LOGGER.warning("Campos disponíveis: " + messageNode.fieldNames());
                 return;
             }
-            
+
             String type = messageNode.get("type").asText();
             String action = messageNode.get("action").asText();
             JsonNode dataNode = messageNode.get("data");
-            
-            LOGGER.info("Processando notificação: type=" + type + ", action=" + action);
-            
+
+            LOGGER.info("Type: " + type);
+            LOGGER.info("Action: " + action);
+            LOGGER.info("Data presente: " + (dataNode != null && !dataNode.isNull()));
+            LOGGER.info("Listeners paciente registrados: " + pacienteListeners.size());
+
             switch (type) {
                 case "paciente":
+                    LOGGER.info("Processando notificação de paciente...");
                     processPacienteNotification(action, dataNode);
                     break;
-                    
+
                 case "paciente_especialidade":
-                    processPacienteEspecialidadeNotification(action, dataNode);
+                    LOGGER.info("Processando notificação de associação...");
+                    processPacienteEspecialidadeNotification(action, dataNode, messageNode);
                     break;
-                    
+
                 default:
                     LOGGER.warning("Tipo de notificação desconhecido: " + type);
             }
-            
+
+            LOGGER.info("=== FIM PROCESSAMENTO MENSAGEM ===");
+
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Erro ao processar mensagem WebSocket: " + message, e);
         }
     }
     
-    /**
-     * Processa notificações de mudanças em Paciente
-     * VERSÃO ADAPTADA PARA DTOs
-     */
     private void processPacienteNotification(String action, JsonNode dataNode) {
         try {
-            switch (action) {
+            String actionLower = action.toLowerCase();
+            
+            switch (actionLower) {
                 case "created":
+                case "create":
                     if (dataNode != null && !dataNode.isNull()) {
-                        // Converte JSON para DTO e depois para modelo de domínio
                         PacienteDTO pacienteDto = objectMapper.treeToValue(dataNode, PacienteDTO.class);
                         Paciente novoPaciente = DtoMapper.toModel(pacienteDto);
-                        
                         if (novoPaciente != null) {
                             notifyPacienteAdded(novoPaciente);
                         }
                     }
                     break;
-                    
                 case "updated":
+                case "update":
                     if (dataNode != null && !dataNode.isNull()) {
-                        // Converte JSON para DTO e depois para modelo de domínio
                         PacienteDTO pacienteDto = objectMapper.treeToValue(dataNode, PacienteDTO.class);
                         Paciente pacienteAtualizado = DtoMapper.toModel(pacienteDto);
-                        
                         if (pacienteAtualizado != null) {
+                            LOGGER.info("✅ Processando atualização de paciente: " + pacienteAtualizado.getNome() + " (ID: " + pacienteAtualizado.getId() + ")");
                             notifyPacienteUpdated(pacienteAtualizado);
+                        } else {
+                            LOGGER.warning("⚠️ Falha ao converter DTO para modelo - paciente nulo");
                         }
+                    } else {
+                        LOGGER.warning("⚠️ DataNode nulo ou vazio para ação de atualização");
                     }
                     break;
-                    
                 case "deleted":
+                case "delete":
                     if (dataNode != null && dataNode.has("id")) {
                         int pacienteId = dataNode.get("id").asInt();
+                        LOGGER.info("✅ Processando remoção de paciente ID: " + pacienteId);
                         notifyPacienteDeleted(pacienteId);
+                    } else {
+                        LOGGER.warning("⚠️ ID não encontrado nos dados para remoção");
                     }
                     break;
-                    
                 default:
-                    LOGGER.warning("Ação desconhecida para paciente: " + action);
+                    LOGGER.warning("❌ Ação desconhecida para paciente: '" + action + "' (original) / '" + actionLower + "' (lowercase)");
             }
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Erro ao processar notificação de paciente", e);
+            LOGGER.log(Level.SEVERE, "❌ Erro ao processar notificação de paciente: " + action, e);
         }
     }
     
     /**
-     * Processa notificações de mudanças em PacienteEspecialidade
-     * VERSÃO ADAPTADA PARA DTOs
+     * Processa notificações de mudanças em PacienteEspecialidade, incluindo operações em lote.
+     * Remove duplicatas e sincroniza corretamente com a interface
      */
-    private void processPacienteEspecialidadeNotification(String action, JsonNode dataNode) {
+    private void processPacienteEspecialidadeNotification(String action, JsonNode dataNode, JsonNode messageNode) {
         try {
-            switch (action) {
-                case "created":
-                    if (dataNode != null && !dataNode.isNull()) {
-                        // Converte JSON para DTO e depois para modelo de domínio
-                        PacienteEspecialidadeDTO associacaoDto = objectMapper.treeToValue(dataNode, PacienteEspecialidadeDTO.class);
-                        PacienteEspecialidade novaAssociacao = DtoMapper.toModel(associacaoDto);
-                        
-                        if (novaAssociacao != null) {
-                            notifyPacienteEspecialidadeAdded(novaAssociacao);
+            LOGGER.info("=== PROCESSANDO NOTIFICAÇÃO PACIENTE-ESPECIALIDADE ===");
+            LOGGER.info("Action: " + action);
+            LOGGER.info("DataNode disponível: " + (dataNode != null && !dataNode.isNull()));
+
+            switch (action.toLowerCase()) {
+                case "created" -> {
+                    LOGGER.info("Processando CREATED...");
+                    // ✅ CORREÇÃO CRÍTICA: Processar corretamente dados CREATED
+                    if (dataNode != null) {
+                        if (dataNode.isArray()) {
+                            // Múltiplas associações
+                            LOGGER.info("CREATED com array de " + dataNode.size() + " associações");
+                            List<PacienteEspecialidadeDTO> dtos = objectMapper.convertValue(
+                                dataNode, new TypeReference<List<PacienteEspecialidadeDTO>>() {});
+                            List<PacienteEspecialidade> associacoes = DtoMapper.toPacienteEspecialidadeModelList(dtos);
+
+                            // Extrair pacienteId da primeira associação
+                            Integer pacienteId = associacoes.isEmpty() ? null : associacoes.get(0).getPacienteId();
+
+                            if (pacienteId != null && !associacoes.isEmpty()) {
+                                LOGGER.info("✅ Notificando batch created: " + associacoes.size() + " associações para paciente " + pacienteId);
+                                notifyPacienteEspecialidadeBatchCreated(pacienteId, associacoes);
+                            }
+                        } else if (dataNode.isObject()) {
+                            // Associação única
+                            LOGGER.info("CREATED com objeto único");
+                            PacienteEspecialidadeDTO dto = objectMapper.treeToValue(dataNode, PacienteEspecialidadeDTO.class);
+                            PacienteEspecialidade associacao = DtoMapper.toModel(dto);
+                            if (associacao != null) {
+                                LOGGER.info("✅ Notificando associação individual criada");
+                                notifyPacienteEspecialidadeAdded(associacao);
+                            }
                         }
                     }
-                    break;
-                    
-                case "updated":
-                    if (dataNode != null && !dataNode.isNull()) {
-                        // Converte JSON para DTO e depois para modelo de domínio
-                        PacienteEspecialidadeDTO associacaoDto = objectMapper.treeToValue(dataNode, PacienteEspecialidadeDTO.class);
-                        PacienteEspecialidade associacaoAtualizada = DtoMapper.toModel(associacaoDto);
-                        
-                        if (associacaoAtualizada != null) {
-                            notifyPacienteEspecialidadeUpdated(associacaoAtualizada);
+                }
+
+                case "created_batch" -> {
+                    LOGGER.info("Processando CREATED_BATCH...");
+                    if (dataNode != null && dataNode.isArray()) {
+                        List<PacienteEspecialidadeDTO> dtos = objectMapper.convertValue(
+                            dataNode, new TypeReference<List<PacienteEspecialidadeDTO>>() {});
+                        List<PacienteEspecialidade> associacoes = DtoMapper.toPacienteEspecialidadeModelList(dtos);
+
+                        Integer pacienteId = messageNode.has("pacienteId") ? messageNode.get("pacienteId").asInt() : null;
+
+                        if (pacienteId != null) {
+                            LOGGER.info("✅ Notificando batch created: " + associacoes.size() + " associações");
+                            notifyPacienteEspecialidadeBatchCreated(pacienteId, associacoes);
                         }
                     }
-                    break;
-                    
-                case "deleted":
+                }
+
+                case "updated" -> {
+                    LOGGER.info("Processando UPDATED...");
+                    if (dataNode != null && dataNode.isObject()) {
+                        PacienteEspecialidadeDTO dto = objectMapper.treeToValue(dataNode, PacienteEspecialidadeDTO.class);
+                        PacienteEspecialidade associacao = DtoMapper.toModel(dto);
+                        if (associacao != null) {
+                            notifyPacienteEspecialidadeUpdated(associacao);
+                        }
+                    }
+                }
+
+                case "deleted" -> {
+                    LOGGER.info("Processando DELETED individual...");
                     if (dataNode != null && dataNode.has("pacienteId") && dataNode.has("especialidadeId")) {
                         int pacienteId = dataNode.get("pacienteId").asInt();
                         int especialidadeId = dataNode.get("especialidadeId").asInt();
                         notifyPacienteEspecialidadeDeleted(pacienteId, especialidadeId);
-                    } else if (dataNode != null && dataNode.has("paciente_id") && dataNode.has("especialidade_id")) {
-                        // Suporte para formato snake_case
-                        int pacienteId = dataNode.get("paciente_id").asInt();
-                        int especialidadeId = dataNode.get("especialidade_id").asInt();
-                        notifyPacienteEspecialidadeDeleted(pacienteId, especialidadeId);
                     }
-                    break;
-                    
-                default:
-                    LOGGER.warning("Ação desconhecida para paciente_especialidade: " + action);
+                }
+
+                case "deleted_batch" -> {
+                    LOGGER.info("Processando DELETED_BATCH...");
+                    Integer pacienteId = messageNode.has("pacienteId") ? messageNode.get("pacienteId").asInt() : null;
+
+                    if (pacienteId != null) {
+                        List<PacienteEspecialidade> associacoesDeletadas = null;
+
+                        if (dataNode != null && dataNode.isArray() && dataNode.size() > 0) {
+                            try {
+                                List<PacienteEspecialidadeDTO> dtosRemovidos = objectMapper.convertValue(
+                                    dataNode, new TypeReference<List<PacienteEspecialidadeDTO>>() {});
+                                associacoesDeletadas = DtoMapper.toPacienteEspecialidadeModelList(dtosRemovidos);
+                                LOGGER.info("Associações específicas a serem removidas: " + associacoesDeletadas.size());
+                            } catch (Exception e) {
+                                LOGGER.log(Level.WARNING, "Erro ao processar lista de associações deletadas", e);
+                            }
+                        }
+
+                        LOGGER.info("✅ Notificando batch deleted para paciente " + pacienteId);
+                        notifyPacienteEspecialidadeBatchDeleted(pacienteId, associacoesDeletadas);
+                    }
+                }
+
+                case "complete_update" -> {
+                    LOGGER.info("Processando COMPLETE_UPDATE...");
+                    Integer pacienteId = messageNode.has("pacienteId") ? messageNode.get("pacienteId").asInt() : null;
+
+                    if (pacienteId != null && dataNode != null && dataNode.isArray()) {
+                        List<PacienteEspecialidadeDTO> dtos = objectMapper.convertValue(
+                            dataNode, new TypeReference<List<PacienteEspecialidadeDTO>>() {});
+                        List<PacienteEspecialidade> novasAssociacoes = DtoMapper.toPacienteEspecialidadeModelList(dtos);
+
+                        LOGGER.info("✅ Notificando complete update: " + novasAssociacoes.size() + " associações");
+                        notifyPacienteEspecialidadeCompleteUpdate(pacienteId, novasAssociacoes);
+                    }
+                }
+
+                default -> {
+                    LOGGER.warning("❌ Ação desconhecida para paciente_especialidade: " + action);
+                }
             }
+
+            LOGGER.info("=== FIM PROCESSAMENTO PACIENTE-ESPECIALIDADE ===");
+
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Erro ao processar notificação de paciente_especialidade", e);
+            LOGGER.log(Level.SEVERE, "❌ Erro ao processar notificação de paciente_especialidade: " + action, e);
         }
     }
     
-    /**
-     * Envia mensagem para o servidor WebSocket
-     */
     private void sendMessage(String message) {
         if (session != null && session.isOpen()) {
             try {
@@ -352,9 +407,6 @@ public class WebSocketClient {
         }
     }
     
-    /**
-     * Agenda tentativa de reconexão
-     */
     private void scheduleReconnect() {
         if (reconnecting || !shouldReconnect) {
             return;
@@ -363,7 +415,6 @@ public class WebSocketClient {
         reconnecting = true;
         LOGGER.info("Agendando tentativas de reconexão...");
         
-        // Executa reconexão em thread separada
         Thread reconnectThread = new Thread(() -> {
             int tentativas = 0;
             int maxTentativas = 5;
@@ -376,14 +427,12 @@ public class WebSocketClient {
                     
                     LOGGER.info("⟳ Tentativa de reconexão " + tentativas + "/" + maxTentativas);
                     
-                    if (connect(5000)) { // 5 segundos de timeout para reconexão
+                    if (connect(5000)) { 
                         LOGGER.info("✓ Reconexão bem-sucedida!");
                         return;
                     }
                     
-                    // Aumenta o intervalo progressivamente
-                    intervalo = Math.min(intervalo * 2, 60000); // Máximo 1 minuto
-                    
+                    intervalo = Math.min(intervalo * 2, 60000); 
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -398,8 +447,6 @@ public class WebSocketClient {
         reconnectThread.setName("WebSocket-Reconnect");
         reconnectThread.start();
     }
-    
-    // Métodos para gerenciar listeners
     
     public void addPacienteListener(PacienteChangeListener listener) {
         synchronized (pacienteListeners) {
@@ -428,8 +475,6 @@ public class WebSocketClient {
             LOGGER.info("PacienteEspecialidadeChangeListener removido - total: " + pacienteEspecialidadeListeners.size());
         }
     }
-    
-    // Métodos para notificar listeners
     
     private void notifyPacienteAdded(Paciente paciente) {
         LOGGER.info("=== NOVO PACIENTE (WebSocket) ===");
@@ -479,7 +524,7 @@ public class WebSocketClient {
     private void notifyPacienteEspecialidadeAdded(PacienteEspecialidade pacienteEspecialidade) {
         LOGGER.info("=== NOVA ASSOCIAÇÃO PACIENTE-ESPECIALIDADE (WebSocket) ===");
         LOGGER.info("Paciente ID: " + pacienteEspecialidade.getPacienteId() + 
-                   ", Especialidade ID: " + pacienteEspecialidade.getEspecialidadeId());
+                     ", Especialidade ID: " + pacienteEspecialidade.getEspecialidadeId());
         
         synchronized (pacienteEspecialidadeListeners) {
             for (PacienteEspecialidadeChangeListener listener : pacienteEspecialidadeListeners) {
@@ -492,10 +537,26 @@ public class WebSocketClient {
         }
     }
     
+    // Método para notificar a criação em lote
+    private void notifyPacienteEspecialidadeBatchCreated(Integer pacienteId, List<PacienteEspecialidade> associacoes) {
+        LOGGER.info("=== NOVAS ASSOCIAÇÕES (LOTE) PACIENTE-ESPECIALIDADE (WebSocket) ===");
+        LOGGER.info("Notificando criação de lote para paciente ID: " + pacienteId + " com " + associacoes.size() + " associações.");
+        
+        synchronized (pacienteEspecialidadeListeners) {
+            for (PacienteEspecialidadeChangeListener listener : pacienteEspecialidadeListeners) {
+                try {
+                    listener.onPacienteEspecialidadeBatchCreated(pacienteId, associacoes);
+                } catch (Exception e) {
+                    LOGGER.log(Level.SEVERE, "Erro ao notificar listener sobre criação em lote de associação", e);
+                }
+            }
+        }
+    }
+    
     private void notifyPacienteEspecialidadeUpdated(PacienteEspecialidade pacienteEspecialidade) {
         LOGGER.info("=== ASSOCIAÇÃO PACIENTE-ESPECIALIDADE ATUALIZADA (WebSocket) ===");
         LOGGER.info("Paciente ID: " + pacienteEspecialidade.getPacienteId() + 
-                   ", Especialidade ID: " + pacienteEspecialidade.getEspecialidadeId());
+                     ", Especialidade ID: " + pacienteEspecialidade.getEspecialidadeId());
         
         synchronized (pacienteEspecialidadeListeners) {
             for (PacienteEspecialidadeChangeListener listener : pacienteEspecialidadeListeners) {
@@ -523,7 +584,43 @@ public class WebSocketClient {
         }
     }
     
-    // Getters para status
+    // Método para notificar a deleção em lote
+    private void notifyPacienteEspecialidadeBatchDeleted(Integer pacienteId, List<PacienteEspecialidade> associacoesDeletadas) {
+        LOGGER.info("=== ASSOCIAÇÕES (LOTE) REMOVIDAS (WebSocket) ===");
+
+        if (associacoesDeletadas != null && !associacoesDeletadas.isEmpty()) {
+            LOGGER.info("Removendo " + associacoesDeletadas.size() + " associações específicas para paciente " + pacienteId);
+        } else {
+            LOGGER.info("Removendo TODAS as associações para paciente " + pacienteId);
+        }
+
+        synchronized (pacienteEspecialidadeListeners) {
+            for (PacienteEspecialidadeChangeListener listener : pacienteEspecialidadeListeners) {
+                try {
+                    listener.onPacienteEspecialidadeBatchDeleted(pacienteId, associacoesDeletadas);
+                } catch (Exception e) {
+                    LOGGER.log(Level.SEVERE, "Erro ao notificar listener sobre deleção em lote", e);
+                }
+            }
+        }
+    }
+    
+  // Atualização completa das associações
+    private void notifyPacienteEspecialidadeCompleteUpdate(Integer pacienteId, List<PacienteEspecialidade> novasAssociacoes) {
+        LOGGER.info("=== ATUALIZAÇÃO COMPLETA DE ASSOCIAÇÕES (WebSocket) ===");
+        LOGGER.info("Atualizando completamente associações para paciente " + pacienteId + 
+                   " com " + (novasAssociacoes != null ? novasAssociacoes.size() : 0) + " associações");
+
+        synchronized (pacienteEspecialidadeListeners) {
+            for (PacienteEspecialidadeChangeListener listener : pacienteEspecialidadeListeners) {
+                try {
+                    listener.onPacienteEspecialidadeCompleteUpdate(pacienteId, novasAssociacoes);
+                } catch (Exception e) {
+                    LOGGER.log(Level.SEVERE, "Erro ao notificar listener sobre atualização completa", e);
+                }
+            }
+        }
+    }  
     
     public boolean isConnected() {
         return connected && session != null && session.isOpen();

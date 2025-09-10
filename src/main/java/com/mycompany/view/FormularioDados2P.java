@@ -2,6 +2,7 @@ package com.mycompany.view;
 
 
 import com.mycompany.listener.PatientUpdateListener;
+import com.mycompany.manager.ApiManager;
 import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
 import com.mycompany.model.bean.PacienteEspecialidade;
@@ -9,6 +10,8 @@ import com.mycompany.printer.Printer;
 import com.mycompany.service.EspecialidadeService;
 import com.mycompany.service.PacienteEspecialidadeService;
 import com.mycompany.service.PacienteService;
+import com.mycompany.view.Componentes.EspecialidadeCheckBox;
+import com.mycompany.view.Componentes.EspecialidadeListCellRenderer;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -49,6 +52,9 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     // Controla se está em modo de edição
     private boolean modoEdicao = false;
     
+    // Campo para controlar o recarregamento
+    private volatile boolean recarregandoDados = false;
+    
     private Printer printer;
 
     // Componentes para especialidades
@@ -58,69 +64,19 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     
     private PatientUpdateListener patientUpdateListener;
     
-    // Classe interna para representar uma especialidade com checkbox
-    private class EspecialidadeCheckBox {
-        private Especialidade especialidade;
-        private boolean selecionada;
-        
-        public EspecialidadeCheckBox(Especialidade especialidade) {
-            this.especialidade = especialidade;
-            this.selecionada = false;
-        }
-        
-        // getters e setters
-        public Especialidade getEspecialidade() { return especialidade; }
-        public boolean isSelecionada() { return selecionada; }
-        public void setSelecionada(boolean selecionada) { this.selecionada = selecionada; }
-        
-        @Override
-        public String toString() {
-            return especialidade.getNome();
-        }
-    }
+    
     
     public void setPatientUpdateListener(PatientUpdateListener listener) {
         this.patientUpdateListener = listener;
     }
     
-    // Renderer customizado para mostrar checkboxes na JList
-    private class EspecialidadeListCellRenderer extends JCheckBox implements ListCellRenderer<EspecialidadeCheckBox> {
-        
-        @Override
-        public Component getListCellRendererComponent(
-                JList<? extends EspecialidadeCheckBox> list,
-                EspecialidadeCheckBox value,
-                int index,
-                boolean isSelected,
-                boolean cellHasFocus) {
-            
-            setComponentOrientation(list.getComponentOrientation());
-            
-            setFont(new Font("Arial", 0, 12));
-            setText(value.toString());
-            setSelected(value.isSelecionada());
-            
-            if (isSelected) {
-                setBackground(list.getSelectionBackground());
-                setForeground(list.getSelectionForeground());
-            } else {
-                setBackground(list.getBackground());
-                setForeground(list.getForeground());
-            }
-            
-            setEnabled(list.isEnabled());
-            setOpaque(true);
-            
-            return this;
-        }
-    }
 
     public FormularioDados2P(PacienteService pacienteService, 
                             PacienteEspecialidadeService pacienteEspecialidadeService, 
                             EspecialidadeService especialidadeService, 
                             List<Especialidade> especialidades) {
         
-        // CORREÇÃO: Inicializar services ANTES de initComponents
+        // Inicializar services ANTES de initComponents
         this.pacienteService = pacienteService;
         this.pacienteEspecialidadeService = pacienteEspecialidadeService;
         this.especialidades = especialidades;
@@ -869,7 +825,7 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                 return;
             }
 
-            // CORREÇÃO: Atualizar o paciente existente ao invés de criar um novo
+            // Atualizar o paciente existente ao invés de criar um novo
             paciente.setNome(txtNome.getText().trim());
             paciente.setCpf(txtCpf.getText().trim());
 
@@ -961,19 +917,35 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                     "Paciente atualizado com sucesso!",
                     "Sucesso", JOptionPane.INFORMATION_MESSAGE);
 
-            // CORREÇÃO: Buscar os dados atualizados da API para garantir consistência - CORRIGIDO: usar paciente.getId()
+            // Buscar os dados atualizados da API para garantir consistência - CORRIGIDO: usar paciente.getId()
             Paciente pacienteAtualizado = pacienteService.buscarPorId(paciente.getId());
             if (pacienteAtualizado != null) {
                 // Atualiza a referência local
                 this.paciente = pacienteAtualizado;
 
+                System.out.println("=== NOTIFICANDO ATUALIZAÇÃO VIA FORMULÁRIO ===");
+                System.out.println("Paciente atualizado: " + pacienteAtualizado.getNome() + " (ID: " + pacienteAtualizado.getId() + ")");
+
                 // NOTIFICAR OS PAINÉIS DA ATUALIZAÇÃO
                 if (patientUpdateListener != null) {
-                    patientUpdateListener.onPatientUpdated(pacienteAtualizado);
+                    // Executar na EDT para garantir thread safety
+                    SwingUtilities.invokeLater(() -> {
+                        try {
+                            patientUpdateListener.onPatientUpdated(pacienteAtualizado);
+                            System.out.println("✅ PatientUpdateListener notificado com sucesso");
+                        } catch (Exception e) {
+                            System.err.println("❌ Erro ao notificar PatientUpdateListener: " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                    });
+                } else {
+                    System.err.println("⚠️ patientUpdateListener é NULL - não foi possível notificar atualização");
                 }
 
                 // Atualizar campos do formulário com dados atualizados
                 preencherCamposComDadosTabela(pacienteAtualizado);
+            }else {
+                System.err.println("❌ Erro: não foi possível buscar dados atualizados do paciente");
             }
 
             // Cancelar edição - voltar ao estado original

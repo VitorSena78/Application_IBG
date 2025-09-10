@@ -382,39 +382,139 @@ public class PainelSaude2 extends javax.swing.JPanel {
     
     // Método para atualizar um paciente existente
     public void atualizarPaciente(Paciente pacienteAtualizado) {
-        for (int i = 0; i < pacientes.size(); i++) {
-            Paciente pacienteNaLista = pacientes.get(i);
+        System.out.println("=== atualizarPaciente chamado PainelSaude2 ===");
+        System.out.println("Paciente a atualizar: " + 
+                          (pacienteAtualizado != null ? 
+                           pacienteAtualizado.getNome() + " (ID: " + pacienteAtualizado.getId() + ")" : 
+                           "NULL"));
 
-            if (pacienteNaLista.getId() == pacienteAtualizado.getId()) {
-                // Verifica se o nome da tabela na linha corresponde ao da lista
-                Object nomeNaTabela = tableModel.getValueAt(i, 0); // Coluna 0 = Nome
-                String nomeEsperado = pacienteNaLista.getNome() != null ? pacienteNaLista.getNome() : "";
+        if (pacienteAtualizado == null || pacienteAtualizado.getId() == null) {
+            System.err.println("❌ Paciente inválido para atualização");
+            return;
+        }
 
-                if (nomeNaTabela != null && nomeNaTabela.toString().equals(nomeEsperado)) {
-                    // Atualiza a linha correspondente da tabela
-                    tableModel.setValueAt(pacienteAtualizado.getNome() != null ? pacienteAtualizado.getNome() : "", i, 0);
-                    tableModel.setValueAt(pacienteAtualizado.getPaXMmhg() != null ? pacienteAtualizado.getPaXMmhg() : "", i, 1);
-                    tableModel.setValueAt(pacienteAtualizado.getFcBpm() != null ? String.valueOf(pacienteAtualizado.getFcBpm()) : "", i, 2);
-                    tableModel.setValueAt(pacienteAtualizado.getFrIbpm() != null ? String.valueOf(pacienteAtualizado.getFrIbpm()) : "", i, 3);
-                    tableModel.setValueAt(pacienteAtualizado.getTemperaturaC() != null ? String.valueOf(pacienteAtualizado.getTemperaturaC()) : "", i, 4);
-                    tableModel.setValueAt(pacienteAtualizado.getHgtMgld() != null ? String.valueOf(pacienteAtualizado.getHgtMgld()) : "", i, 5);
-                    tableModel.setValueAt(pacienteAtualizado.getSpo2() != null ? String.valueOf(pacienteAtualizado.getSpo2()) : "", i, 6);
-                    tableModel.setValueAt(pacienteAtualizado.getPeso() != null ? String.valueOf(pacienteAtualizado.getPeso()) : "", i, 7);
-                    tableModel.setValueAt(pacienteAtualizado.getAltura() != null ? String.valueOf(pacienteAtualizado.getAltura()) : "", i, 8);
-                    tableModel.setValueAt(pacienteAtualizado.getImc() != null ? String.valueOf(pacienteAtualizado.getImc()) : "", i, 9);
-                    tableModel.setValueAt(pacienteAtualizado.getId() != 0 ? String.valueOf(pacienteAtualizado.getId()) : "", i, 10);
+        // EXECUTAR NA EDT PARA GARANTIR THREAD SAFETY
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // BUSCAR POR ID DIRETAMENTE NA TABELA (não na lista)
+                boolean pacienteEncontrado = false;
+                int linhaEncontrada = -1;
 
-                    // Atualiza a lista local
-                    pacientes.set(i, pacienteAtualizado);
-                    
-                    // Destacar a linha atualizada (opcional)
-                    jTable1.setRowSelectionInterval(i, i);
-                    jTable1.scrollRectToVisible(jTable1.getCellRect(i, 0, true));
+                // Procurar pela linha correta baseada no ID (coluna 10)
+                for (int row = 0; row < tableModel.getRowCount(); row++) {
+                    Object idNaTabela = tableModel.getValueAt(row, 10); // Coluna 10 = ID
+
+                    if (idNaTabela != null) {
+                        try {
+                            int idTabelaInt = Integer.parseInt(idNaTabela.toString());
+                            if (idTabelaInt == pacienteAtualizado.getId()) {
+                                linhaEncontrada = row;
+                                pacienteEncontrado = true;
+                                break;
+                            }
+                        } catch (NumberFormatException e) {
+                            System.err.println("Erro ao converter ID da tabela: " + idNaTabela);
+                            continue;
+                        }
+                    }
                 }
 
-                break; // Para após encontrar e (possivelmente) atualizar
+                if (pacienteEncontrado) {
+                    System.out.println("✅ Paciente encontrado na linha " + linhaEncontrada + " - atualizando...");
+
+                    // Atualizar TODOS os campos na linha encontrada
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getNome() != null ? pacienteAtualizado.getNome() : "", 
+                        linhaEncontrada, 0);
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getPaXMmhg() != null ? pacienteAtualizado.getPaXMmhg() : "", 
+                        linhaEncontrada, 1);
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getFcBpm() != null ? String.valueOf(pacienteAtualizado.getFcBpm()) : "", 
+                        linhaEncontrada, 2);
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getFrIbpm() != null ? String.valueOf(pacienteAtualizado.getFrIbpm()) : "", 
+                        linhaEncontrada, 3);
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getTemperaturaC() != null ? String.valueOf(pacienteAtualizado.getTemperaturaC()) : "", 
+                        linhaEncontrada, 4);
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getHgtMgld() != null ? String.valueOf(pacienteAtualizado.getHgtMgld()) : "", 
+                        linhaEncontrada, 5);
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getSpo2() != null ? String.valueOf(pacienteAtualizado.getSpo2()) : "", 
+                        linhaEncontrada, 6);
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getPeso() != null ? String.valueOf(pacienteAtualizado.getPeso()) : "", 
+                        linhaEncontrada, 7);
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getAltura() != null ? String.valueOf(pacienteAtualizado.getAltura()) : "", 
+                        linhaEncontrada, 8);
+
+                    tableModel.setValueAt(
+                        pacienteAtualizado.getImc() != null ? String.valueOf(pacienteAtualizado.getImc()) : "", 
+                        linhaEncontrada, 9);
+
+                    tableModel.setValueAt(
+                        String.valueOf(pacienteAtualizado.getId()), 
+                        linhaEncontrada, 10);
+
+                    // FORÇAR NOTIFICAÇÃO DA MUDANÇA
+                    tableModel.fireTableRowsUpdated(linhaEncontrada, linhaEncontrada);
+
+                    // Atualizar também a lista local de pacientes
+                    synchronized (pacientes) {
+                        for (int i = 0; i < pacientes.size(); i++) {
+                            if (pacientes.get(i).getId() != null && 
+                                pacientes.get(i).getId().equals(pacienteAtualizado.getId())) {
+                                pacientes.set(i, pacienteAtualizado);
+                                System.out.println("✅ Lista local de pacientes também atualizada");
+                                break;
+                            }
+                        }
+                    }
+
+                    // FORÇAR REPAINT DA TABELA
+                    jTable1.revalidate();
+                    jTable1.repaint();
+
+                    // Destacar visualmente a linha atualizada (opcional)
+                    try {
+                        jTable1.setRowSelectionInterval(linhaEncontrada, linhaEncontrada);
+                        jTable1.scrollRectToVisible(jTable1.getCellRect(linhaEncontrada, 0, true));
+                        System.out.println("✅ Linha " + linhaEncontrada + " destacada visualmente");
+                    } catch (Exception e) {
+                        System.out.println("⚠️ Não foi possível destacar a linha: " + e.getMessage());
+                    }
+
+                    System.out.println("✅ Paciente atualizado com sucesso na tabela: " + 
+                                      pacienteAtualizado.getNome() + " (linha " + linhaEncontrada + ")");
+
+                } else {
+                    System.err.println("❌ Paciente ID " + pacienteAtualizado.getId() + 
+                                      " não encontrado na tabela para atualização");
+
+                    // Log adicional para debug
+                    System.err.println("⚠️ DEBUG: IDs presentes na tabela:");
+                    for (int row = 0; row < Math.min(5, tableModel.getRowCount()); row++) {
+                        Object idNaTabela = tableModel.getValueAt(row, 10);
+                        System.err.println("    Linha " + row + ": ID = " + idNaTabela);
+                    }
+                }
+
+            } catch (Exception e) {
+                System.err.println("❌ Erro inesperado ao atualizar paciente na tabela: " + e.getMessage());
+                e.printStackTrace();
             }
-        }
+        });
     }
     
     // Método para remover um paciente

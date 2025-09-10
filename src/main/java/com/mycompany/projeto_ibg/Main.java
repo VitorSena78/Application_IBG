@@ -34,6 +34,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import java.util.logging.Logger;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 public class Main extends javax.swing.JFrame implements MenuListener, PacienteChangeListener, PacienteEspecialidadeChangeListener, PatientUpdateListener {
     
@@ -372,12 +373,17 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
      */
     private void registrarListeners() {
         try {
-            if (apiManager != null && apiManager.isWebSocketConectado()) {
+            if (apiManager != null) {
+                // Registrar independente do status da conexão
                 apiManager.addPacienteChangeListener(this);
                 apiManager.addPacienteEspecialidadeChangeListener(this);
-                LOGGER.info("✅ Listeners registrados para notificações em tempo real");
-            } else {
-                LOGGER.warning("⚠️ WebSocket não disponível - listeners não registrados");
+
+                // Se não estiver conectado, tentar conectar
+                if (!apiManager.isWebSocketConectado()) {
+                    apiManager.reconectar();
+                }
+
+                LOGGER.info("Listeners registrados");
             }
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Erro ao registrar listeners", e);
@@ -543,6 +549,9 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
             LOGGER.info("1/4 - Reinicializando services...");
             showNotification("Reinicializando conexões...");
             inicializarServices();
+            
+            // Re-registrar Listeners 
+            registrarListeners();
 
             // 2. RECARREGAR TODOS OS DADOS
             LOGGER.info("2/4 - Carregando dados completos...");
@@ -835,6 +844,246 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     }
     
     @Override
+    public void onPacienteEspecialidadeBatchCreated(Integer pacienteId, List<PacienteEspecialidade> novasAssociacoes) {
+        SwingUtilities.invokeLater(() -> {
+            LOGGER.info("=== BATCH CREATED - Main ===");
+            LOGGER.info("🆕 Batch de associações criadas via WebSocket para paciente " + pacienteId + 
+                       ": " + (novasAssociacoes != null ? novasAssociacoes.size() : 0) + " associações");
+
+            if (novasAssociacoes != null && !novasAssociacoes.isEmpty()) {
+                synchronized (pacienteEspecialidades) {
+                    int adicionadas = 0;
+
+                    for (PacienteEspecialidade associacao : novasAssociacoes) {
+                        // ✅ CORREÇÃO: Verificar duplicatas antes de adicionar
+                        boolean jaExiste = pacienteEspecialidades.stream()
+                            .anyMatch(pe -> pe.getPacienteId().equals(associacao.getPacienteId()) && 
+                                           pe.getEspecialidadeId().equals(associacao.getEspecialidadeId()));
+
+                        if (!jaExiste) {
+                            pacienteEspecialidades.add(associacao);
+                            adicionadas++;
+                            LOGGER.info("✅ Nova associação adicionada: Paciente " + associacao.getPacienteId() + 
+                                       " - Especialidade " + associacao.getEspecialidadeId());
+                        } else {
+                            LOGGER.info("⚠️ Associação já existe: Paciente " + associacao.getPacienteId() + 
+                                       " - Especialidade " + associacao.getEspecialidadeId());
+                        }
+                    }
+
+                    LOGGER.info("📊 Resultado: " + adicionadas + " associações novas adicionadas de " + novasAssociacoes.size());
+                    LOGGER.info("📊 Total de associações no cache: " + pacienteEspecialidades.size());
+
+                    if (adicionadas > 0) {
+                        atualizarPaineisComAssociacoes();
+                        showNotification("➕ " + adicionadas + " associações criadas para paciente " + pacienteId);
+                        validarConsistenciaAssociacoes(pacienteId);
+                    } else {
+                        LOGGER.info("⚠️ Nenhuma associação nova foi adicionada (todas já existiam)");
+                        showNotification("⚠️ Associações já existentes - nada foi alterado");
+                    }
+                }
+            } else {
+                LOGGER.warning("⚠️ Lista de novas associações está vazia ou nula");
+            }
+        });
+    }
+
+    @Override
+    public void onPacienteEspecialidadeBatchDeleted(Integer pacienteId, List<PacienteEspecialidade> associacoesDeletadas) {
+        SwingUtilities.invokeLater(() -> {
+            LOGGER.info("=== BATCH DELETED - Main ===");
+            LOGGER.info("🗑️ Batch de associações deletadas via WebSocket para paciente " + pacienteId);
+
+            synchronized (pacienteEspecialidades) {
+                if (associacoesDeletadas != null && !associacoesDeletadas.isEmpty()) {
+                    // ✅ CORREÇÃO: Remover associações específicas
+                    LOGGER.info("Removendo " + associacoesDeletadas.size() + " associações específicas");
+
+                    int removidas = 0;
+                    for (PacienteEspecialidade associacao : associacoesDeletadas) {
+                        boolean removido = pacienteEspecialidades.removeIf(pe -> 
+                            pe.getPacienteId().equals(associacao.getPacienteId()) && 
+                            pe.getEspecialidadeId().equals(associacao.getEspecialidadeId()));
+
+                        if (removido) {
+                            removidas++;
+                            LOGGER.info("✅ Associação removida: Paciente " + associacao.getPacienteId() + 
+                                       " - Especialidade " + associacao.getEspecialidadeId());
+                        } else {
+                            LOGGER.warning("⚠️ Associação não encontrada para remover: Paciente " + 
+                                         associacao.getPacienteId() + " - Especialidade " + associacao.getEspecialidadeId());
+                        }
+                    }
+
+                    LOGGER.info("📊 Resultado: " + removidas + " associações removidas de " + associacoesDeletadas.size());
+
+                    if (removidas > 0) {
+                        atualizarPaineisComAssociacoes();
+                        showNotification("🗑️ " + removidas + " associações removidas do paciente " + pacienteId);
+                    }
+
+                } else {
+                    // ✅ CORREÇÃO: Remover TODAS as associações do paciente
+                    LOGGER.info("Removendo TODAS as associações do paciente " + pacienteId);
+
+                    long removidasTotal = pacienteEspecialidades.stream()
+                        .filter(pe -> pe.getPacienteId().equals(pacienteId))
+                        .count();
+
+                    boolean removido = pacienteEspecialidades.removeIf(pe -> pe.getPacienteId().equals(pacienteId));
+
+                    LOGGER.info("📊 Associações encontradas para remoção: " + removidasTotal);
+                    LOGGER.info("📊 Remoção executada: " + removido);
+
+                    if (removido && removidasTotal > 0) {
+                        LOGGER.info("✅ Todas as " + removidasTotal + " associações do paciente foram removidas");
+                        atualizarPaineisComAssociacoes();
+                        showNotification("🗑️ Todas as " + removidasTotal + " associações removidas do paciente " + pacienteId);
+                    } else {
+                        LOGGER.info("⚠️ Nenhuma associação encontrada para remover do paciente " + pacienteId);
+                    }
+                }
+
+                LOGGER.info("📊 Total de associações no cache após remoção: " + pacienteEspecialidades.size());
+            }
+        });
+    }
+
+    @Override
+    public void onPacienteEspecialidadeCompleteUpdate(Integer pacienteId, List<PacienteEspecialidade> novasAssociacoes) {
+        SwingUtilities.invokeLater(() -> {
+            LOGGER.info("=== COMPLETE UPDATE - Main ===");
+            LOGGER.info("🔄 Atualização completa das associações via WebSocket para paciente " + pacienteId + 
+                       ": " + (novasAssociacoes != null ? novasAssociacoes.size() : 0) + " associações");
+
+            synchronized (pacienteEspecialidades) {
+                // ✅ PASSO 1: Remover TODAS as associações existentes do paciente
+                long removidasAnteriormente = pacienteEspecialidades.stream()
+                    .filter(pe -> pe.getPacienteId().equals(pacienteId))
+                    .count();
+
+                boolean removido = pacienteEspecialidades.removeIf(pe -> pe.getPacienteId().equals(pacienteId));
+                LOGGER.info("📊 Associações anteriores removidas: " + removidasAnteriormente + " (operação: " + removido + ")");
+
+                // ✅ PASSO 2: Adicionar TODAS as novas associações
+                int adicionadas = 0;
+                if (novasAssociacoes != null && !novasAssociacoes.isEmpty()) {
+                    pacienteEspecialidades.addAll(novasAssociacoes);
+                    adicionadas = novasAssociacoes.size();
+                    LOGGER.info("📊 Novas associações adicionadas: " + adicionadas);
+
+                    // Log detalhado das associações adicionadas
+                    for (PacienteEspecialidade assoc : novasAssociacoes) {
+                        LOGGER.info("  → Associação: Paciente " + assoc.getPacienteId() + 
+                                   " - Especialidade " + assoc.getEspecialidadeId());
+                    }
+                }
+
+                // ✅ PASSO 3: Atualizar interface
+                atualizarPaineisComAssociacoes();
+
+                showNotification("🔄 Associações atualizadas completamente para paciente " + pacienteId + 
+                               ": " + adicionadas + " associações ativas");
+
+                LOGGER.info("✅ Atualização completa concluída: " + removidasAnteriormente + 
+                           " removidas, " + adicionadas + " adicionadas");
+                LOGGER.info("📊 Total final de associações no cache: " + pacienteEspecialidades.size());
+            }
+            
+            validarConsistenciaAssociacoes(pacienteId);
+        });
+    }
+    
+    // Método para atualizar painéis com associações de forma thread-safe
+    private void atualizarPaineisComAssociacoes() {
+        try {
+            // Criar cópia thread-safe das associações atualizadas
+            List<PacienteEspecialidade> associacoesAtualizadas;
+            synchronized (pacienteEspecialidades) {
+                associacoesAtualizadas = new ArrayList<>(pacienteEspecialidades);
+            }
+
+            LOGGER.info("📊 Atualizando painéis com " + associacoesAtualizadas.size() + " associações");
+
+            // Atualizar apenas o painel de dados se estiver ativo
+            if (painelDadosAtivo != null) {
+                painelDadosAtivo.atualizarPacienteEspecialidade(associacoesAtualizadas);
+                LOGGER.info("✅ PainelDados2 atualizado com associações");
+
+                // ✅ ADICIONAL: Forçar repaint para garantir que a UI seja atualizada
+                painelDadosAtivo.repaint();
+                painelDadosAtivo.revalidate();
+            } else {
+                LOGGER.info("⚠️ PainelDados2 não está ativo - não foi atualizado");
+            }
+
+            // Atualizar formulários se estiverem ativos
+            if (formularioDadosAtivo != null) {
+                try {
+                    // Tentar chamar método de atualização do formulário se existir
+                    LOGGER.info("📝 Notificando formulário sobre mudanças nas associações");
+                    // formularioDadosAtivo.atualizarAssociacoes(); // Implementar se necessário
+                } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "Erro ao atualizar formulário", e);
+                }
+            }
+
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "❌ Erro ao atualizar painéis com associações", e);
+        }
+    }
+    
+    private void validarConsistenciaAssociacoes(Integer pacienteId) {
+        if (!isApiDisponivel()) {
+            LOGGER.info("API não disponível - pulando validação de consistência");
+            return;
+        }
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Buscar associações do servidor
+                List<PacienteEspecialidade> associacoesServidor = 
+                    pacienteEspecialidadeService.buscarPorPacienteId(pacienteId);
+
+                // Buscar associações locais
+                List<PacienteEspecialidade> associacoesLocais;
+                synchronized (pacienteEspecialidades) {
+                    associacoesLocais = pacienteEspecialidades.stream()
+                        .filter(pe -> pe.getPacienteId().equals(pacienteId))
+                        .collect(Collectors.toList());
+                }
+
+                // Comparar
+                if (associacoesServidor.size() != associacoesLocais.size()) {
+                    LOGGER.warning("⚠️ INCONSISTÊNCIA DETECTADA: Servidor tem " + associacoesServidor.size() + 
+                                 " associações, local tem " + associacoesLocais.size());
+
+                    SwingUtilities.invokeLater(() -> {
+                        int opcao = JOptionPane.showConfirmDialog(this,
+                            "Inconsistência detectada entre dados locais e servidor.\n" +
+                            "Servidor: " + associacoesServidor.size() + " associações\n" +
+                            "Local: " + associacoesLocais.size() + " associações\n\n" +
+                            "Deseja recarregar os dados?",
+                            "Inconsistência de Dados",
+                            JOptionPane.YES_NO_OPTION,
+                            JOptionPane.WARNING_MESSAGE);
+
+                        if (opcao == JOptionPane.YES_OPTION) {
+                            onRecarregarClicked();
+                        }
+                    });
+                } else {
+                    LOGGER.info("✅ Consistência validada: " + associacoesServidor.size() + " associações");
+                }
+
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Erro na validação de consistência", e);
+            }
+        });
+    }
+    
+    @Override
     public void onPacienteAdded(Paciente paciente) {
         SwingUtilities.invokeLater(() -> {
             LOGGER.info("🆕 Novo paciente via WebSocket: " + paciente.getNome());
@@ -867,35 +1116,60 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     @Override
     public void onPacienteUpdated(Paciente paciente) {
         SwingUtilities.invokeLater(() -> {
-            LOGGER.info("🔄 Paciente atualizado via WebSocket: " + paciente.getNome());
-            
+            LOGGER.info("=== onPacienteUpdated WebSocket - Main ===");
+            LOGGER.info("Paciente recebido: " + 
+                       (paciente != null ? paciente.getNome() + " (ID: " + paciente.getId() + ")" : "NULL"));
+
+            if (paciente == null) {
+                LOGGER.severe("❌ Paciente NULL recebido via WebSocket");
+                return;
+            }
+
+            // Atualizar cache local de forma thread-safe
             synchronized (pacientes) {
-                // Encontrar e atualizar na lista local
                 boolean atualizado = false;
                 for (int i = 0; i < pacientes.size(); i++) {
                     if (pacientes.get(i).getId() != null && pacientes.get(i).getId().equals(paciente.getId())) {
+                        LOGGER.info("Atualizando paciente na posição " + i + " da lista local");
                         pacientes.set(i, paciente);
                         atualizado = true;
                         break;
                     }
                 }
-                
-                if (atualizado) {
-                    // Atualizar painéis ativos
-                    if (painelSaudeAtivo != null) {
-                        painelSaudeAtivo.atualizarPaciente(paciente);
-                    }
-                    if (painelDadosAtivo != null) {
-                        painelDadosAtivo.atualizarPaciente(paciente);
-                    }
-                    
-                    showNotification("🔄 Paciente atualizado: " + paciente.getNome());
-                    LOGGER.info("Paciente atualizado no cache local: " + paciente.getNome());
-                } else {
-                    LOGGER.warning("Paciente para atualização não encontrado no cache: " + paciente.getId());
-                    // Adicionar se não existe
+
+                if (!atualizado) {
+                    LOGGER.warning("⚠️ Paciente não encontrado na lista local - adicionando");
                     pacientes.add(paciente);
                 }
+            }
+
+            // Atualizar AMBOS os painéis de forma robusta
+            try {
+                boolean painelAtualizado = false;
+
+                if (painelSaudeAtivo != null) {
+                    LOGGER.info("Atualizando PainelSaude2...");
+                    painelSaudeAtivo.atualizarPaciente(paciente);
+                    painelAtualizado = true;
+                    LOGGER.info("✅ PainelSaude2 atualizado");
+                }
+
+                if (painelDadosAtivo != null) {
+                    LOGGER.info("Atualizando PainelDados2...");
+                    painelDadosAtivo.atualizarPaciente(paciente);
+                    painelAtualizado = true;
+                    LOGGER.info("✅ PainelDados2 atualizado");
+                }
+
+                if (painelAtualizado) {
+                    showNotification("🔄 Dados atualizados via WebSocket: " + paciente.getNome());
+                    LOGGER.info("✅ Notificação de atualização WebSocket concluída");
+                } else {
+                    LOGGER.warning("⚠️ Nenhum painel ativo para atualizar");
+                }
+
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "❌ Erro ao atualizar painéis via WebSocket", e);
             }
         });
     }
@@ -985,24 +1259,40 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
     public void tentarReconexao() {
         if (apiManager != null) {
             showNotification("🔄 Tentando reconectar...");
-            
+
             CompletableFuture.runAsync(() -> {
                 try {
+                    LOGGER.info("Iniciando processo de reconexão...");
                     apiManager.reconectar();
-                    
+
                     SwingUtilities.invokeLater(() -> {
                         if (apiManager.isApiDisponivel()) {
-                            // Reinicializar services
-                            inicializarServices();
-                            showNotification("✅ Reconexão bem-sucedida!");
-                            
-                            // Recarregar dados
-                            onRecarregarClicked();
+                            // ✅ CORREÇÃO: Re-inicializar services E re-registrar listeners
+                            try {
+                                inicializarServices();
+                                registrarListeners(); // CRÍTICO: Re-registrar listeners
+
+                                showNotification("✅ Reconexão bem-sucedida!");
+
+                                // Opcionalmente, recarregar dados
+                                int opcao = JOptionPane.showConfirmDialog(this,
+                                    "Reconexão bem-sucedida!\n\nDeseja recarregar os dados?",
+                                    "Reconexão Bem-sucedida",
+                                    JOptionPane.YES_NO_OPTION,
+                                    JOptionPane.QUESTION_MESSAGE);
+
+                                if (opcao == JOptionPane.YES_OPTION) {
+                                    onRecarregarClicked();
+                                }
+                            } catch (Exception e) {
+                                LOGGER.log(Level.SEVERE, "Erro ao reinicializar após reconexão", e);
+                                showNotification("❌ Erro na reinicialização após reconexão");
+                            }
                         } else {
                             showNotification("❌ Falha na reconexão");
                         }
                     });
-                    
+
                 } catch (Exception e) {
                     LOGGER.log(Level.WARNING, "Erro na tentativa de reconexão", e);
                     SwingUtilities.invokeLater(() -> {
