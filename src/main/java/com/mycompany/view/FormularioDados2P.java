@@ -598,7 +598,7 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
             txtTelefone.setText(patientData.getTelefone() != null ? patientData.getTelefone() : "");
             txtEndereco.setText(patientData.getEndereco() != null ? patientData.getEndereco() : "");
 
-            // CORREÇÃO: Verificar estado da lista de especialidades antes de limpar
+            // Verificar estado da lista de especialidades antes de limpar
             if (modeloLista == null) {
                 System.out.println("⚠️ modeloLista é NULL - criando lista de especialidades");
                 criarListaEspecialidades();
@@ -923,9 +923,21 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                 // Atualiza a referência local
                 this.paciente = pacienteAtualizado;
 
+                try {
+                    List<PacienteEspecialidade> especialidadesAtualizadas = pacienteEspecialidadeService.buscarPorPacienteId(paciente.getId());
+                    this.pacienteEspecialidades = especialidadesAtualizadas != null ? especialidadesAtualizadas : new ArrayList<>();
+                    System.out.println("Especialidades recarregadas após salvamento: " + this.pacienteEspecialidades.size());
+                } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "Erro ao recarregar especialidades após salvamento", e);
+                    this.pacienteEspecialidades = new ArrayList<>();
+                }
+                
                 System.out.println("=== NOTIFICANDO ATUALIZAÇÃO VIA FORMULÁRIO ===");
                 System.out.println("Paciente atualizado: " + pacienteAtualizado.getNome() + " (ID: " + pacienteAtualizado.getId() + ")");
 
+                // Atualizar campos do formulário com dados atualizados
+                preencherCamposComDadosTabela(pacienteAtualizado);
+                
                 // NOTIFICAR OS PAINÉIS DA ATUALIZAÇÃO
                 if (patientUpdateListener != null) {
                     // Executar na EDT para garantir thread safety
@@ -940,10 +952,7 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
                     });
                 } else {
                     System.err.println("⚠️ patientUpdateListener é NULL - não foi possível notificar atualização");
-                }
-
-                // Atualizar campos do formulário com dados atualizados
-                preencherCamposComDadosTabela(pacienteAtualizado);
+                } 
             }else {
                 System.err.println("❌ Erro: não foi possível buscar dados atualizados do paciente");
             }
