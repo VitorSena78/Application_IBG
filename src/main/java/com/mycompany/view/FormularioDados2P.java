@@ -16,6 +16,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
@@ -51,26 +53,25 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     
     // Controla se está em modo de edição
     private boolean modoEdicao = false;
-    
-    // Campo para controlar o recarregamento
     private volatile boolean recarregandoDados = false;
-    
     private Printer printer;
-
-    // Componentes para especialidades
+    private PatientUpdateListener patientUpdateListener;
+    
+   // Componentes para especialidades
     private JList<EspecialidadeCheckBox> listaEspecialidades;
     private DefaultListModel<EspecialidadeCheckBox> modeloLista;
     private JScrollPane scrollEspecialidades;
     
-    private PatientUpdateListener patientUpdateListener;
-    
-    
+    // Componentes do formulário
+    private JLabel lblTitulo;
+    private JTextField txtNome, txtNomeDaMae, txtEndereco, txtDataNascimento;
+    private JTextField txtIdade, txtCpf, txtSus, txtTelefone;
+    private JButton btnSalvar, btnEditar, btnExcluir, btnImprimir;
     
     public void setPatientUpdateListener(PatientUpdateListener listener) {
         this.patientUpdateListener = listener;
     }
     
-
     public FormularioDados2P(PacienteService pacienteService, 
                             PacienteEspecialidadeService pacienteEspecialidadeService, 
                             EspecialidadeService especialidadeService, 
@@ -80,7 +81,6 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         this.pacienteService = pacienteService;
         this.pacienteEspecialidadeService = pacienteEspecialidadeService;
         this.especialidades = especialidades;
-        
         
         initComponents();
         
@@ -94,7 +94,6 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     private void criarListaEspecialidades() {
         modeloLista = new DefaultListModel<>();
         
-        // Adicionar especialidades à lista
         if (especialidades != null) {
             for (Especialidade esp : especialidades) {
                 modeloLista.addElement(new EspecialidadeCheckBox(esp));
@@ -105,20 +104,17 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         listaEspecialidades.setCellRenderer(new EspecialidadeListCellRenderer());
         listaEspecialidades.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         listaEspecialidades.setLayoutOrientation(JList.VERTICAL);
-        listaEspecialidades.setVisibleRowCount(-1); // Mostra todas as linhas disponíveis
+        listaEspecialidades.setVisibleRowCount(-1);
         
-        // Configurar aparência
-        listaEspecialidades.setFont(new Font("Arial", 0, 12));
+        // **MELHORIA**: Configuração visual otimizada
+        listaEspecialidades.setFont(new Font("Arial", Font.PLAIN, 12));
         listaEspecialidades.setBackground(new Color(245, 248, 250));
         listaEspecialidades.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
         
-        // Listener para clique
         listaEspecialidades.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (!listaEspecialidades.isEnabled()) {
-                    return; // Não permite clique se estiver desabilitado
-                }
+                if (!listaEspecialidades.isEnabled()) return;
                 
                 int index = listaEspecialidades.locationToIndex(e.getPoint());
                 if (index >= 0) {
@@ -129,35 +125,28 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
             }
         });
         
-        // Criar ScrollPane para a lista
+        // **MELHORIA**: ScrollPane responsivo
         scrollEspecialidades = new JScrollPane(listaEspecialidades);
         scrollEspecialidades.setPreferredSize(new Dimension(440, 120));
+        scrollEspecialidades.setMinimumSize(new Dimension(300, 100));
         scrollEspecialidades.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollEspecialidades.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         setupCustomScrollPane();
     }
     
-    private void setupCustomScrollPane(){
-        // Configuração básica do scroll pane
+    private void setupCustomScrollPane() {
         scrollEspecialidades.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
         scrollEspecialidades.getViewport().setBackground(Color.WHITE);
         
-        // Personalizar a barra de rolagem vertical
         JScrollBar verticalScrollBar = scrollEspecialidades.getVerticalScrollBar();
         verticalScrollBar.setUI(new ModernScrollBarUI());
         verticalScrollBar.setPreferredSize(new Dimension(12, 0));
         verticalScrollBar.setBackground(SCROLLBAR_TRACK_COLOR);
         
-        
-        // Configurações adicionais do scroll pane
         scrollEspecialidades.setBackground(Color.WHITE);
         scrollEspecialidades.getViewport().setOpaque(true);
-        
-        // Remover bordas desnecessárias
         scrollEspecialidades.setViewportBorder(null);
         scrollEspecialidades.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
-        
-        
     }
 
     @Override
@@ -165,15 +154,10 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         Graphics2D g2 = (Graphics2D) grphcs;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
-        // Define a cor de fundo
         g2.setColor(new Color(245, 248, 250));
-        
-        // Desenha um retângulo com todos os cantos arredondados
         g2.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
-        
-        // Sobrepõe retângulos normais para manter apenas o canto inferior direito arredondado
-        g2.fillRect(0, 0, getWidth() - 15, getHeight()); // Remove arredondamento dos cantos esquerdos e superior direito
-        g2.fillRect(0, 0, getWidth(), getHeight() - 15); // Remove arredondamento dos cantos superiores
+        g2.fillRect(0, 0, getWidth() - 15, getHeight());
+        g2.fillRect(0, 0, getWidth(), getHeight() - 15);
         
         super.paintComponent(grphcs);
     }
@@ -181,273 +165,279 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
-
-        jMenuBar1 = new javax.swing.JMenuBar();
-        jMenu1 = new javax.swing.JMenu();
-        jMenu2 = new javax.swing.JMenu();
-        jMenu3 = new javax.swing.JMenu();
-
-        // Labels
-        lblTitulo = new javax.swing.JLabel();
-        lblNome = new javax.swing.JLabel();
-        lblNomeDaMae = new javax.swing.JLabel();
-        lblEndereco = new javax.swing.JLabel();
-        lblDataNascimento = new javax.swing.JLabel();
-        lblIdade = new javax.swing.JLabel();
-        lblCpf = new javax.swing.JLabel();
-        lblSus = new javax.swing.JLabel();
-        lblTelefone = new javax.swing.JLabel();
-
-        // Campos de texto
-        txtNome = new javax.swing.JTextField();
-        txtNomeDaMae = new javax.swing.JTextField();
-        txtEndereco = new javax.swing.JTextField();
-        txtDataNascimento = new javax.swing.JTextField();
-        txtIdade = new javax.swing.JTextField();
-        txtCpf = new javax.swing.JTextField();
-        txtSus = new javax.swing.JTextField();
-        txtTelefone = new javax.swing.JTextField();
-
-        // Botões
-        btnSalvar = new javax.swing.JButton();
-        btnEditar = new javax.swing.JButton();
-        btnExcluir = new javax.swing.JButton();
-        btnImprimir = new javax.swing.JButton();
-
-        jMenu1.setText("File");
-        jMenuBar1.add(jMenu1);
-
-        jMenu2.setText("Edit");
-        jMenuBar1.add(jMenu2);
-
-        jMenu3.setText("jMenu3");
+        // Usar GridBagLayout ao invés de GroupLayout
+        setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
         
-        // Label das especialidades
-        lblEspecialidades = new javax.swing.JLabel();
-        lblEspecialidades.setFont(new java.awt.Font("Arial", 1, 12));
-        lblEspecialidades.setText("Especialidades Médicas:");
-
+        // Configurações padrão do GridBagConstraints
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
+        
+        // Criar componentes
+        criarComponentes();
         criarListaEspecialidades();
-
-        // Configurar título
-        lblTitulo.setFont(new java.awt.Font("Arial", 1, 20));
-        lblTitulo.setForeground(new java.awt.Color(51, 51, 51));
-        lblTitulo.setText("Cadastro de Pacientes");
-
-        // Configurar labels
-        lblNome.setFont(new java.awt.Font("Arial", 0, 12));
-        lblNome.setText("Nome Completo:");
-
-        lblNomeDaMae.setFont(new java.awt.Font("Arial", 0, 12));
-        lblNomeDaMae.setText("Nome da Mãe:");
-
-        lblEndereco.setFont(new java.awt.Font("Arial", 0, 12));
-        lblEndereco.setText("Endereço:");
-
-        lblDataNascimento.setFont(new java.awt.Font("Arial", 0, 12));
-        lblDataNascimento.setText("Data de Nascimento:");
-
-        lblIdade.setFont(new java.awt.Font("Arial", 0, 12));
-        lblIdade.setText("Idade:");
-
-        lblCpf.setFont(new java.awt.Font("Arial", 0, 12));
-        lblCpf.setText("CPF:");
-
-        lblSus.setFont(new java.awt.Font("Arial", 0, 12));
-        lblSus.setText("Cartão do SUS:");
-
-        lblTelefone.setFont(new java.awt.Font("Arial", 0, 12));
-        lblTelefone.setText("Telefone:");
-
-        // Configurar campos de texto com tamanhos otimizados
         
-        // Campos grandes (mais texto esperado)
-        txtNome.setFont(new java.awt.Font("Arial", 0, 12));
-        txtNome.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        txtNomeDaMae.setFont(new java.awt.Font("Arial", 0, 12));
-        txtNomeDaMae.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        txtEndereco.setFont(new java.awt.Font("Arial", 0, 12));
-        txtEndereco.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        // Campos médios
-        txtDataNascimento.setFont(new java.awt.Font("Arial", 0, 12));
-        txtDataNascimento.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        txtTelefone.setFont(new java.awt.Font("Arial", 0, 12));
-        txtTelefone.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        txtSus.setFont(new java.awt.Font("Arial", 0, 12));
-        txtSus.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        // Campos pequenos
-        txtCpf.setFont(new java.awt.Font("Arial", 0, 12));
-        txtCpf.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        // Campo idade não editável e com aparência diferenciada
-        txtIdade.setFont(new java.awt.Font("Arial", 0, 12));
-        txtIdade.setEditable(false);
-        txtIdade.setBackground(new java.awt.Color(240, 240, 240));
-        txtIdade.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        // Configurar botões
-        btnSalvar.setBackground(new java.awt.Color(76, 175, 80));
-        btnSalvar.setForeground(new java.awt.Color(255, 255, 255));
-        btnSalvar.setFont(new java.awt.Font("Arial", 1, 12));
-        btnSalvar.setText("Salvar");
-
-        btnEditar.setBackground(new java.awt.Color(255, 152, 0));
-        btnEditar.setForeground(new java.awt.Color(255, 255, 255));
-        btnEditar.setFont(new java.awt.Font("Arial", 1, 12));
-        btnEditar.setText("Editar");
-
-        btnExcluir.setBackground(new java.awt.Color(244, 67, 54));
-        btnExcluir.setForeground(new java.awt.Color(255, 255, 255));
-        btnExcluir.setFont(new java.awt.Font("Arial", 1, 12));
-        btnExcluir.setText("Excluir");
+        // Montar layout seguindo o guia
+        criarTitulo(gbc);
+        criarSecaoDadosPessoais(gbc);
+        criarSecaoContato(gbc);
+        criarSecaoEspecialidades(gbc);
+        criarSecaoBotoes(gbc);
         
-        btnImprimir.setBackground(new java.awt.Color(33, 150, 243)); // Azul
-        btnImprimir.setForeground(new java.awt.Color(255, 255, 255));
-        btnImprimir.setFont(new java.awt.Font("Arial", 1, 12));
-        btnImprimir.setText("Imprimir");
-
-
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(layout.createSequentialGroup()
-                    .addGap(30, 30, 30)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addComponent(lblTitulo)
-                        // Campos grandes (largura total - 440px)
-                        .addComponent(lblNome)
-                        .addComponent(txtNome, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(lblNomeDaMae)
-                        .addComponent(txtNomeDaMae, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(lblEndereco)
-                        .addComponent(txtEndereco, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
-
-                        // Linha com campos médios lado a lado
-                        .addGroup(layout.createSequentialGroup()
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(lblDataNascimento)
-                                .addComponent(txtDataNascimento, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGap(20, 20, 20)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(lblIdade)
-                                .addComponent(txtIdade, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGap(20, 20, 20)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(lblTelefone)
-                                .addComponent(txtTelefone, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE)))
-
-                        // Linha com campos pequenos/médios lado a lado
-                        .addGroup(layout.createSequentialGroup()
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(lblCpf)
-                                .addComponent(txtCpf, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGap(20, 20, 20)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(lblSus)
-                                .addComponent(txtSus, javax.swing.GroupLayout.PREFERRED_SIZE, 260, javax.swing.GroupLayout.PREFERRED_SIZE)))
-
-                        // Especialidades - agora usando JList
-                        .addComponent(lblEspecialidades)
-                        .addComponent(scrollEspecialidades, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
-
-                        // Botões
-                        .addGroup(layout.createSequentialGroup()
-                            .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGap(18, 18, 18)
-                            .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGap(18, 18, 18)
-                            .addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGap(64, 64, 64)
-                            .addComponent(btnImprimir, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addContainerGap(30, Short.MAX_VALUE))
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(layout.createSequentialGroup()
-                    .addGap(25, 25, 25)
-                    .addComponent(lblTitulo)
-                    .addGap(25, 25, 25)
-
-                    // Campos grandes
-                    .addComponent(lblNome)
-                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                    .addComponent(txtNome, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGap(15, 15, 15)
-
-                    .addComponent(lblNomeDaMae)
-                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                    .addComponent(txtNomeDaMae, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGap(15, 15, 15)
-
-                    .addComponent(lblEndereco)
-                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                    .addComponent(txtEndereco, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGap(15, 15, 15)
-
-                    // Linha com Data, Idade e Telefone
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(lblDataNascimento)
-                        .addComponent(lblIdade)
-                        .addComponent(lblTelefone))
-                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(txtDataNascimento, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(txtIdade, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(txtTelefone, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGap(15, 15, 15)
-
-                    // Linha com CPF e SUS
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(lblCpf)
-                        .addComponent(lblSus))
-                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(txtCpf, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(txtSus, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGap(20, 20, 20)
-
-                    // Especialidades médicas - agora usando JList
-                    .addComponent(lblEspecialidades)
-                    .addGap(10, 10, 10)
-                    .addComponent(scrollEspecialidades, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGap(25, 25, 25)
-
-                    // Botões
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(btnImprimir, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addContainerGap(30, Short.MAX_VALUE))
-        );
+        // Espaço flexível no final para responsividade
+        gbc.gridx = 0; gbc.gridy = 20;
+        gbc.gridwidth = 4;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.VERTICAL;
+        add(Box.createVerticalGlue(), gbc);
         
-        // Define tamanho preferido do painel
-        this.setPreferredSize(new Dimension(500, 750));
+        // **MELHORIA**: Definir tamanhos responsivos
+        setPreferredSize(new Dimension(500, 750));
+        setMinimumSize(new Dimension(350, 500));
     }// </editor-fold>//GEN-END:initComponents
 
+    private void criarComponentes() {
+        // Título
+        lblTitulo = new JLabel("Cadastro de Pacientes");
+        lblTitulo.setFont(new Font("Arial", Font.BOLD, 20));
+        lblTitulo.setForeground(new Color(51, 51, 51));
+        
+        // Campos de texto com configuração uniforme
+        txtNome = criarCampoTexto();
+        txtNomeDaMae = criarCampoTexto();
+        txtEndereco = criarCampoTexto();
+        txtDataNascimento = criarCampoTexto();
+        txtTelefone = criarCampoTexto();
+        txtCpf = criarCampoTexto();
+        txtSus = criarCampoTexto();
+        
+        // Campo idade (não editável)
+        txtIdade = criarCampoTexto();
+        txtIdade.setEditable(false);
+        txtIdade.setBackground(new Color(240, 240, 240));
+        
+        // Botões com cores padronizadas
+        btnSalvar = criarBotao("Salvar", new Color(76, 175, 80));
+        btnEditar = criarBotao("Editar", new Color(255, 152, 0));
+        btnExcluir = criarBotao("Excluir", new Color(244, 67, 54));
+        btnImprimir = criarBotao("Imprimir", new Color(33, 150, 243));
+    }
+    
+    private JTextField criarCampoTexto() {
+        JTextField campo = new JTextField();
+        campo.setFont(new Font("Arial", Font.PLAIN, 12));
+        campo.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(200, 200, 200)),
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        campo.setPreferredSize(new Dimension(150, 30));
+        campo.setMinimumSize(new Dimension(100, 25));
+        return campo;
+    }
+    
+    private JButton criarBotao(String texto, Color cor) {
+        JButton botao = new JButton(texto);
+        botao.setBackground(cor);
+        botao.setForeground(Color.WHITE);
+        botao.setFont(new Font("Arial", Font.BOLD, 12));
+        botao.setPreferredSize(new Dimension(80, 35));
+        botao.setFocusPainted(false);
+        botao.setBorderPainted(false);
+        return botao;
+    }
+    
+    private void criarTitulo(GridBagConstraints gbc) {
+        gbc.gridx = 0; gbc.gridy = 0;
+        gbc.gridwidth = 4;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.insets = new Insets(15, 10, 20, 10);
+        add(lblTitulo, gbc);
+        
+        // Resetar configurações
+        gbc.gridwidth = 1;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(5, 5, 5, 5);
+    }
+    
+    private void criarSecaoDadosPessoais(GridBagConstraints gbc) {
+        // Agrupar dados pessoais com painel com borda
+        JPanel painelDadosPessoais = new JPanel(new GridBagLayout());
+        painelDadosPessoais.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(BORDER_COLOR), "Dados Pessoais"));
+        painelDadosPessoais.setOpaque(false);
+        
+        GridBagConstraints gbcInterno = new GridBagConstraints();
+        gbcInterno.insets = new Insets(5, 5, 5, 5);
+        gbcInterno.anchor = GridBagConstraints.WEST;
+        
+        // Nome (campo largo)
+        gbcInterno.gridx = 0; gbcInterno.gridy = 0;
+        gbcInterno.weightx = 0.0; gbcInterno.fill = GridBagConstraints.NONE;
+        painelDadosPessoais.add(new JLabel("Nome Completo:"), gbcInterno);
+        
+        gbcInterno.gridx = 1; gbcInterno.gridwidth = 3;
+        gbcInterno.weightx = 1.0; gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelDadosPessoais.add(txtNome, gbcInterno);
+        
+        // Nome da Mãe (campo largo)
+        gbcInterno.gridx = 0; gbcInterno.gridy = 1;
+        gbcInterno.gridwidth = 1; gbcInterno.weightx = 0.0;
+        gbcInterno.fill = GridBagConstraints.NONE;
+        painelDadosPessoais.add(new JLabel("Nome da Mãe:"), gbcInterno);
+        
+        gbcInterno.gridx = 1; gbcInterno.gridwidth = 3;
+        gbcInterno.weightx = 1.0; gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelDadosPessoais.add(txtNomeDaMae, gbcInterno);
+        
+        // Data ne nascimento e Idade na mesma linha
+        gbcInterno.gridx = 0; gbcInterno.gridy = 2;
+        gbcInterno.gridwidth = 1; gbcInterno.weightx = 0.0;
+        gbcInterno.fill = GridBagConstraints.NONE;
+        painelDadosPessoais.add(new JLabel("Data Nascimento:"), gbcInterno);
+        
+        gbcInterno.gridx = 1; gbcInterno.weightx = 0.3;
+        gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelDadosPessoais.add(txtDataNascimento, gbcInterno);
+        
+        gbcInterno.gridx = 2; gbcInterno.weightx = 0.0;
+        gbcInterno.fill = GridBagConstraints.NONE;
+        painelDadosPessoais.add(new JLabel("Idade:"), gbcInterno);
+        
+        gbcInterno.gridx = 3; gbcInterno.weightx = 0.2;
+        gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelDadosPessoais.add(txtIdade, gbcInterno);
+        
+        // CPF e SUS na mesma linha
+        gbcInterno.gridx = 0; gbcInterno.gridy = 3;
+        gbcInterno.weightx = 0.0; gbcInterno.fill = GridBagConstraints.NONE;
+        painelDadosPessoais.add(new JLabel("Cartão SUS:"), gbcInterno);
+        
+        gbcInterno.gridx = 1; gbcInterno.weightx = 0.4;
+        gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelDadosPessoais.add(txtSus, gbcInterno);
+        
+        gbcInterno.gridx = 2; gbcInterno.weightx = 0.0;
+        gbcInterno.fill = GridBagConstraints.NONE;
+        painelDadosPessoais.add(new JLabel("CPF:"), gbcInterno);
+        
+        gbcInterno.gridx = 3; gbcInterno.weightx = 0.6;
+        gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelDadosPessoais.add(txtCpf, gbcInterno);
+        
+        // Adicionar painel ao layout principal
+        gbc.gridx = 0; gbc.gridy = 1;
+        gbc.gridwidth = 4;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        add(painelDadosPessoais, gbc);
+    }
+    
+    private void criarSecaoContato(GridBagConstraints gbc) {
+        // **MELHORIA**: Seção de contato separada
+        JPanel painelContato = new JPanel(new GridBagLayout());
+        painelContato.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(BORDER_COLOR), "Dados de Contato"));
+        painelContato.setOpaque(false);
+        
+        GridBagConstraints gbcInterno = new GridBagConstraints();
+        gbcInterno.insets = new Insets(5, 5, 5, 5);
+        gbcInterno.anchor = GridBagConstraints.WEST;
+        
+        // Telefone
+        gbcInterno.gridx = 0; gbcInterno.gridy = 0;
+        gbcInterno.weightx = 0.0; gbcInterno.fill = GridBagConstraints.NONE;
+        painelContato.add(new JLabel("Telefone:"), gbcInterno);
+        
+        gbcInterno.gridx = 1; gbcInterno.weightx = 0.4;
+        gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelContato.add(txtTelefone, gbcInterno);
+        
+        // Endereço (campo largo)
+        gbcInterno.gridx = 0; gbcInterno.gridy = 1;
+        gbcInterno.weightx = 0.0; gbcInterno.fill = GridBagConstraints.NONE;
+        painelContato.add(new JLabel("Endereço:"), gbcInterno);
+        
+        gbcInterno.gridx = 1; gbcInterno.gridwidth = 3;
+        gbcInterno.weightx = 1.0; gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelContato.add(txtEndereco, gbcInterno);
+        
+        // Adicionar painel ao layout principal
+        gbc.gridx = 0; gbc.gridy = 2;
+        gbc.gridwidth = 4;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        add(painelContato, gbc);
+    }
+    
+    private void criarSecaoEspecialidades(GridBagConstraints gbc) {
+        // **MELHORIA**: Seção de especialidades com painel próprio
+        JPanel painelEspec = new JPanel(new GridBagLayout());
+        painelEspec.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(BORDER_COLOR), "Especialidades Médicas"));
+        painelEspec.setOpaque(false);
+        
+        GridBagConstraints gbcInterno = new GridBagConstraints();
+        gbcInterno.gridx = 0; gbcInterno.gridy = 0;
+        gbcInterno.fill = GridBagConstraints.BOTH;
+        gbcInterno.weightx = 1.0; gbcInterno.weighty = 1.0;
+        gbcInterno.insets = new Insets(5, 5, 5, 5);
+        
+        painelEspec.add(scrollEspecialidades, gbcInterno);
+        
+        // Adicionar painel ao layout principal
+        gbc.gridx = 0; gbc.gridy = 3;
+        gbc.gridwidth = 4;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 1.0; gbc.weighty = 0.3;
+        add(painelEspec, gbc);
+    }
+    
+    private void criarSecaoBotoes(GridBagConstraints gbc) {
+        // **MELHORIA**: Painel de botões centralizado
+        JPanel painelBotoes = new JPanel(new FlowLayout(FlowLayout.CENTER, 2, 0));
+        painelBotoes.setOpaque(false);
+        
+        painelBotoes.add(btnSalvar);
+        painelBotoes.add(btnEditar);
+        painelBotoes.add(btnExcluir);
+        painelBotoes.add(btnImprimir);
+        
+        gbc.gridx = 0; gbc.gridy = 4;
+        gbc.gridwidth = 4;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.insets = new Insets(20, 10, 15, 10);
+        add(painelBotoes, gbc);
+    }
+    
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        
+        // Adicionar listener de redimensionamento
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                adjustLayoutForSize();
+            }
+        });
+    }
+    
+    private void adjustLayoutForSize() {
+        Dimension size = getSize();
+        
+        // **RESPONSIVIDADE**: Ajustar layout baseado no tamanho
+        if (size.width < 400) {
+            // Layout compacto para telas pequenas
+            setMinimumSize(new Dimension(350, 500));
+        } else {
+            // Layout normal
+            setPreferredSize(new Dimension(500, 750));
+        }
+        
+        revalidate();
+        repaint();
+    }
+    
     // MÉTODOS ATUALIZADOS PARA USAR JLIST
     private void setEspecialidadesSelecionadas(List<PacienteEspecialidade> pacienteEspecialidades) {
         System.out.println("=== setEspecialidadesSelecionadas ===");
@@ -1321,13 +1311,11 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
         System.out.println("✅ Estado anterior limpo");
     }
 
-    // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuBar jMenuBar1;
     private javax.swing.JMenu jMenu1;
     private javax.swing.JMenu jMenu2;
     private javax.swing.JMenu jMenu3;
 
-    private javax.swing.JLabel lblTitulo;
     private javax.swing.JLabel lblNome;
     private javax.swing.JLabel lblDataNascimento;
     private javax.swing.JLabel lblIdade;
@@ -1337,21 +1325,4 @@ public class FormularioDados2P extends javax.swing.JPanel implements PatientSele
     private javax.swing.JLabel lblTelefone;
     private javax.swing.JLabel lblEndereco;
 
-    private javax.swing.JTextField txtNome;
-    private javax.swing.JTextField txtDataNascimento;
-    private javax.swing.JTextField txtIdade;
-    private javax.swing.JTextField txtNomeDaMae;
-    private javax.swing.JTextField txtCpf;
-    private javax.swing.JTextField txtSus;
-    private javax.swing.JTextField txtTelefone;
-    private javax.swing.JTextField txtEndereco;
-
-    private javax.swing.JButton btnSalvar;
-    private javax.swing.JButton btnEditar;
-    private javax.swing.JButton btnExcluir;
-    private javax.swing.JButton btnImprimir;
-    
-    // Especialidades médicas - agora usando JList
-    private javax.swing.JLabel lblEspecialidades;
-    // End of variables declaration//GEN-END:variables
 }

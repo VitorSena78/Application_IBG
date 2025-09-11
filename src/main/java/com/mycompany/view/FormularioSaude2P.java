@@ -1,6 +1,5 @@
 package com.mycompany.view;
 
-
 import com.mycompany.listener.PatientUpdateListener;
 import com.mycompany.model.bean.Especialidade;
 import com.mycompany.model.bean.Paciente;
@@ -13,52 +12,91 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.kafka.common.errors.ApiException;
 
-public class FormularioSaude2P extends javax.swing.JPanel implements PatientSelectionListener {
+public class FormularioSaude2P extends JPanel implements PatientSelectionListener {
 
     private static final Logger LOGGER = Logger.getLogger(FormularioSaude2P.class.getName());
+    private static final Color BORDER_COLOR = new Color(226, 232, 240);
     
     // Services
     private PacienteService pacienteService;
     private PacienteEspecialidadeService pacienteEspecialidadeService;
     private EspecialidadeService especialidadeService;
     
-    // Lista para armazenar os registros de sinais vitais
+    // Dados
     private Paciente paciente = new Paciente();
     private DecimalFormat df = new DecimalFormat("#.##");
     private Printer printer;
     
     // Controla se está em modo de edição
     private boolean modoEdicao = false;
-    
     private PatientUpdateListener patientUpdateListener;
 
-    public FormularioSaude2P(PacienteService pacienteService, PacienteEspecialidadeService pacienteEspecialidadeService, EspecialidadeService especialidadeService, List<Especialidade> especialidades) {
+    // Componentes
+    private JLabel lblTitulo;
+    private JTextField txtPressaoArterial, txtFrequenciaCardiaca, txtFrequenciaRespiratoria;
+    private JTextField txtTemperatura, txtHemoglicoteste, txtSaturacaoOxigenio;
+    private JTextField txtPeso, txtAltura, txtImc;
+    private JButton btnSalvar, btnEditar, btnExcluir, btnImprimir;
+
+    public FormularioSaude2P(PacienteService pacienteService, 
+                           PacienteEspecialidadeService pacienteEspecialidadeService, 
+                           EspecialidadeService especialidadeService, 
+                           List<Especialidade> especialidades) {
         
-        // CORREÇÃO: Inicializar services ANTES de initComponents
         this.pacienteService = pacienteService;
         this.pacienteEspecialidadeService = pacienteEspecialidadeService;
         this.especialidadeService = especialidadeService;
         
-        
         initComponents();
-
-        // Inicializar o printer com as dependências necessárias
+        
         this.printer = new Printer(this, pacienteEspecialidadeService, especialidadeService, especialidades);
-
         setupEvents();
         setOpaque(false);
+        
+        // Linha temporária para debug
+        debugBotoes();
     }
+    
+    public void debugBotoes() {
+            LOGGER.info("=== DEBUG DOS BOTÕES ===");
+            LOGGER.info("btnSalvar: " + (btnSalvar != null ? "Visível=" + btnSalvar.isVisible() + ", Enabled=" + btnSalvar.isEnabled() : "NULL"));
+            LOGGER.info("btnEditar: " + (btnEditar != null ? "Visível=" + btnEditar.isVisible() + ", Enabled=" + btnEditar.isEnabled() : "NULL"));
+            LOGGER.info("btnExcluir: " + (btnExcluir != null ? "Visível=" + btnExcluir.isVisible() + ", Enabled=" + btnExcluir.isEnabled() : "NULL"));
+            LOGGER.info("btnImprimir: " + (btnImprimir != null ? "Visível=" + btnImprimir.isVisible() + ", Enabled=" + btnImprimir.isEnabled() : "NULL"));
+
+            // Verificar se os botões estão no painel
+            Component[] componentes = getComponents();
+            LOGGER.info("Total de componentes no formulário: " + componentes.length);
+
+            for (int i = 0; i < componentes.length; i++) {
+                Component comp = componentes[i];
+                if (comp instanceof JPanel) {
+                    JPanel painel = (JPanel) comp;
+                    if (painel.getLayout() instanceof FlowLayout) {
+                        LOGGER.info("Painel de botões encontrado com " + painel.getComponentCount() + " componentes");
+                        for (int j = 0; j < painel.getComponentCount(); j++) {
+                            Component botao = painel.getComponent(j);
+                            if (botao instanceof JButton) {
+                                JButton btn = (JButton) botao;
+                                LOGGER.info("  - Botão: '" + btn.getText() + "' (Visível: " + btn.isVisible() + ")");
+                            }
+                        }
+                    }
+                }
+            }
+        }
     
     public void setPatientUpdateListener(PatientUpdateListener listener) {
         this.patientUpdateListener = listener;
@@ -69,299 +107,282 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
         Graphics2D g2 = (Graphics2D) grphcs;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
-        // Define a cor de fundo
         g2.setColor(new Color(245, 248, 250));
-        
-        // Desenha um retângulo com todos os cantos arredondados
         g2.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
-        
-        // Sobrepõe retângulos normais para manter apenas o canto inferior direito arredondado
-        g2.fillRect(0, 0, getWidth() - 15, getHeight()); // Remove arredondamento dos cantos esquerdos e superior direito
-        g2.fillRect(0, 0, getWidth(), getHeight() - 15); // Remove arredondamento dos cantos superiores
+        g2.fillRect(0, 0, getWidth() - 15, getHeight());
+        g2.fillRect(0, 0, getWidth(), getHeight() - 15);
         
         super.paintComponent(grphcs);
     }
 
     @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
-
-        jMenuBar1 = new javax.swing.JMenuBar();
-        jMenu1 = new javax.swing.JMenu();
-        jMenu2 = new javax.swing.JMenu();
-        jMenu3 = new javax.swing.JMenu();
-
-        // Labels
-        lblTitulo = new javax.swing.JLabel();
-        lblPressaoArterial = new javax.swing.JLabel();
-        lblFrequenciaCardiaca = new javax.swing.JLabel();
-        lblFrequenciaRespiratoria = new javax.swing.JLabel();
-        lblTemperatura = new javax.swing.JLabel();
-        lblHemoglicoteste = new javax.swing.JLabel();
-        lblSaturacaoOxigenio = new javax.swing.JLabel();
-        lblPeso = new javax.swing.JLabel();
-        lblAltura = new javax.swing.JLabel();
-        lblImc = new javax.swing.JLabel();
-
-        // Campos de texto
-        txtPressaoArterial = new javax.swing.JTextField();
-        txtFrequenciaCardiaca = new javax.swing.JTextField();
-        txtFrequenciaRespiratoria = new javax.swing.JTextField();
-        txtTemperatura = new javax.swing.JTextField();
-        txtHemoglicoteste = new javax.swing.JTextField();
-        txtSaturacaoOxigenio = new javax.swing.JTextField();
-        txtPeso = new javax.swing.JTextField();
-        txtAltura = new javax.swing.JTextField();
-        txtImc = new javax.swing.JTextField();
-
-        // Botões
-        btnSalvar = new javax.swing.JButton();
-        btnEditar = new javax.swing.JButton();
-        btnExcluir = new javax.swing.JButton();
-        btnImprimir = new javax.swing.JButton();
-
-        jMenu1.setText("File");
-        jMenuBar1.add(jMenu1);
-
-        jMenu2.setText("Edit");
-        jMenuBar1.add(jMenu2);
-
-        jMenu3.setText("jMenu3");
-
-        // Configurar título
-        lblTitulo.setFont(new java.awt.Font("Arial", 1, 20));
-        lblTitulo.setForeground(new java.awt.Color(51, 51, 51));
-        lblTitulo.setText("Registro de Sinais Vitais");
-
-        // Configurar labels
-        lblPressaoArterial.setFont(new java.awt.Font("Arial", 0, 12));
-        lblPressaoArterial.setText("Pressão Arterial (mmHg):");
-
-        lblFrequenciaCardiaca.setFont(new java.awt.Font("Arial", 0, 12));
-        lblFrequenciaCardiaca.setText("Frequência Cardíaca (bpm):");
-
-        lblFrequenciaRespiratoria.setFont(new java.awt.Font("Arial", 0, 12));
-        lblFrequenciaRespiratoria.setText("Freq. Respiratória (irpm):");
-
-        lblTemperatura.setFont(new java.awt.Font("Arial", 0, 12));
-        lblTemperatura.setText("Temperatura (°C):");
-
-        lblHemoglicoteste.setFont(new java.awt.Font("Arial", 0, 12));
-        lblHemoglicoteste.setText("Hemoglicoteste (mg/dL):");
-
-        lblSaturacaoOxigenio.setFont(new java.awt.Font("Arial", 0, 12));
-        lblSaturacaoOxigenio.setText("Saturação O₂ (%):");
-
-        lblPeso.setFont(new java.awt.Font("Arial", 0, 12));
-        lblPeso.setText("Peso (kg):");
-
-        lblAltura.setFont(new java.awt.Font("Arial", 0, 12));
-        lblAltura.setText("Altura (m):");
-
-        lblImc.setFont(new java.awt.Font("Arial", 0, 12));
-        lblImc.setText("IMC (kg/m²):");
-
-        // Configurar campos de texto com tamanhos otimizados
+        // **MUDANÇA PRINCIPAL**: Usar GridBagLayout ao invés de GroupLayout
+        setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
         
-        // Campo grande (mais texto esperado)
-        txtPressaoArterial.setFont(new java.awt.Font("Arial", 0, 12));
-        txtPressaoArterial.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        // Configurações padrão do GridBagConstraints
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
+        
+        // Criar componentes
+        criarComponentes();
+        
+        // Montar layout seguindo o guia do FormularioDados2P
+        criarTitulo(gbc);
+        criarSecaoSinaisVitais(gbc);
+        criarSecaoAntropometrica(gbc);
+        criarSecaoBotoes(gbc);
+        
+        // Espaço flexível no final para responsividade
+        gbc.gridx = 0; gbc.gridy = 20;
+        gbc.gridwidth = 4;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.VERTICAL;
+        add(Box.createVerticalGlue(), gbc);
+        
+        // **MELHORIA**: Definir tamanhos responsivos
+        setPreferredSize(new Dimension(500, 650));
+        setMinimumSize(new Dimension(350, 500));
+    }
 
-        // Campos médios
-        txtFrequenciaCardiaca.setFont(new java.awt.Font("Arial", 0, 12));
-        txtFrequenciaCardiaca.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        txtFrequenciaRespiratoria.setFont(new java.awt.Font("Arial", 0, 12));
-        txtFrequenciaRespiratoria.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        txtHemoglicoteste.setFont(new java.awt.Font("Arial", 0, 12));
-        txtHemoglicoteste.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        // Campos pequenos
-        txtTemperatura.setFont(new java.awt.Font("Arial", 0, 12));
-        txtTemperatura.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        txtSaturacaoOxigenio.setFont(new java.awt.Font("Arial", 0, 12));
-        txtSaturacaoOxigenio.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        txtPeso.setFont(new java.awt.Font("Arial", 0, 12));
-        txtPeso.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        txtAltura.setFont(new java.awt.Font("Arial", 0, 12));
-        txtAltura.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        // Campo IMC não editável e com aparência diferenciada
-        txtImc.setFont(new java.awt.Font("Arial", 0, 12));
+    private void criarComponentes() {
+        // Título
+        lblTitulo = new JLabel("Registro de Sinais Vitais");
+        lblTitulo.setFont(new Font("Arial", Font.BOLD, 20));
+        lblTitulo.setForeground(new Color(51, 51, 51));
+        
+        // Campos de texto com configuração uniforme
+        txtPressaoArterial = criarCampoTexto();
+        txtFrequenciaCardiaca = criarCampoTexto();
+        txtFrequenciaRespiratoria = criarCampoTexto();
+        txtTemperatura = criarCampoTexto();
+        txtHemoglicoteste = criarCampoTexto();
+        txtSaturacaoOxigenio = criarCampoTexto();
+        txtPeso = criarCampoTexto();
+        txtAltura = criarCampoTexto();
+        
+        // Campo IMC (não editável)
+        txtImc = criarCampoTexto();
         txtImc.setEditable(false);
-        txtImc.setBackground(new java.awt.Color(240, 240, 240));
-        txtImc.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-
-        // Configurar botões
-        btnSalvar.setBackground(new java.awt.Color(76, 175, 80));
-        btnSalvar.setForeground(new java.awt.Color(255, 255, 255));
-        btnSalvar.setFont(new java.awt.Font("Arial", 1, 12));
-        btnSalvar.setText("Salvar");
-
-        btnEditar.setBackground(new java.awt.Color(255, 152, 0));
-        btnEditar.setForeground(new java.awt.Color(255, 255, 255));
-        btnEditar.setFont(new java.awt.Font("Arial", 1, 12));
-        btnEditar.setText("Editar");
-
-        btnExcluir.setBackground(new java.awt.Color(244, 67, 54));
-        btnExcluir.setForeground(new java.awt.Color(255, 255, 255));
-        btnExcluir.setFont(new java.awt.Font("Arial", 1, 12));
-        btnExcluir.setText("Excluir");
+        txtImc.setBackground(new Color(240, 240, 240));
         
-        btnImprimir.setBackground(new java.awt.Color(33, 150, 243)); // Azul
-        btnImprimir.setForeground(new java.awt.Color(255, 255, 255));
-        btnImprimir.setFont(new java.awt.Font("Arial", 1, 12));
-        btnImprimir.setText("Imprimir");
-
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(layout.createSequentialGroup()
-                                .addGap(30, 30, 30)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addComponent(lblTitulo)
-                                        
-                                        // Campo grande (largura total - 440px)
-                                        .addComponent(lblPressaoArterial)
-                                        .addComponent(txtPressaoArterial, javax.swing.GroupLayout.PREFERRED_SIZE, 440, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        
-                                        // Linha com FC e FR lado a lado
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(lblFrequenciaCardiaca)
-                                                        .addComponent(txtFrequenciaCardiaca, javax.swing.GroupLayout.PREFERRED_SIZE, 210, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                                .addGap(20, 20, 20)
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(lblFrequenciaRespiratoria)
-                                                        .addComponent(txtFrequenciaRespiratoria, javax.swing.GroupLayout.PREFERRED_SIZE, 210, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                        
-                                        // Linha com Temperatura, Saturação e Hemoglicoteste lado a lado
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(lblTemperatura)
-                                                        .addComponent(txtTemperatura, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                                .addGap(25, 25, 25)
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(lblSaturacaoOxigenio)
-                                                        .addComponent(txtSaturacaoOxigenio, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                                .addGap(25, 25, 25)
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(lblHemoglicoteste)
-                                                        .addComponent(txtHemoglicoteste, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                        
-                                        // Linha com Peso, Altura e IMC lado a lado
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(lblPeso)
-                                                        .addComponent(txtPeso, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                                .addGap(25, 25, 25)
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(lblAltura)
-                                                        .addComponent(txtAltura, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                                .addGap(25, 25, 25)
-                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(lblImc)
-                                                        .addComponent(txtImc, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                        
-                                        // Botões
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addGap(18, 18, 18)
-                                                .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addGap(18, 18, 18)
-                                                .addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addGap(64, 64, 64)
-                                                .addComponent(btnImprimir, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                .addContainerGap(30, Short.MAX_VALUE))
-        );
-        layout.setVerticalGroup(
-                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(layout.createSequentialGroup()
-                                .addGap(25, 25, 25)
-                                .addComponent(lblTitulo)
-                                .addGap(25, 25, 25)
-                                
-                                // Campo grande
-                                .addComponent(lblPressaoArterial)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(txtPressaoArterial, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(15, 15, 15)
-                                
-                                // Linha com FC e FR
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(lblFrequenciaCardiaca)
-                                        .addComponent(lblFrequenciaRespiratoria))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(txtFrequenciaCardiaca, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(txtFrequenciaRespiratoria, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(15, 15, 15)
-                                
-                                // Linha com Temperatura, Saturação O2 e Hemoglicoteste
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(lblTemperatura)
-                                        .addComponent(lblSaturacaoOxigenio)
-                                        .addComponent(lblHemoglicoteste))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(txtTemperatura, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(txtSaturacaoOxigenio, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(txtHemoglicoteste, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(15, 15, 15)
-                                
-                                // Linha com Peso, Altura e IMC
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(lblPeso)
-                                        .addComponent(lblAltura)
-                                        .addComponent(lblImc))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(txtPeso, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(txtAltura, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(txtImc, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(30, 30, 30)
-                                
-                                // Botões
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(btnImprimir, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addContainerGap(30, Short.MAX_VALUE))
-        );
+        // Botões com cores padronizadas
+        btnSalvar = criarBotao("Salvar", new Color(76, 175, 80));
+        btnEditar = criarBotao("Editar", new Color(255, 152, 0));
+        btnExcluir = criarBotao("Excluir", new Color(244, 67, 54));
+        btnImprimir = criarBotao("Imprimir", new Color(33, 150, 243));
+    }
+    
+    private JTextField criarCampoTexto() {
+        JTextField campo = new JTextField();
+        campo.setFont(new Font("Arial", Font.PLAIN, 12));
+        campo.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(200, 200, 200)),
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        campo.setPreferredSize(new Dimension(150, 30));
+        campo.setMinimumSize(new Dimension(100, 25));
+        return campo;
+    }
+    
+    private JButton criarBotao(String texto, Color cor) {
+        JButton botao = new JButton(texto);
+        botao.setBackground(cor);
+        botao.setForeground(Color.WHITE);
+        botao.setFont(new Font("Arial", Font.BOLD, 12));
+        botao.setPreferredSize(new Dimension(80, 35));
+        botao.setFocusPainted(false);
+        botao.setBorderPainted(false);
+        return botao;
+    }
+    
+    private void criarTitulo(GridBagConstraints gbc) {
+        gbc.gridx = 0; gbc.gridy = 0;
+        gbc.gridwidth = 4;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.insets = new Insets(15, 10, 20, 10);
+        add(lblTitulo, gbc);
         
-        // Define tamanho preferido do painel - MESMO TAMANHO do FormularioDados2P
-        this.setPreferredSize(new Dimension(500, 620));
-    }// </editor-fold>//GEN-END:initComponents
+        // Resetar configurações
+        gbc.gridwidth = 1;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(5, 5, 5, 5);
+    }
+    
+    private void criarSecaoSinaisVitais(GridBagConstraints gbc) {
+        //  Agrupar sinais vitais com painel com borda
+        JPanel painelSinaisVitais = new JPanel(new GridBagLayout());
+        painelSinaisVitais.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(BORDER_COLOR), "Sinais Vitais"));
+        painelSinaisVitais.setOpaque(false);
 
-    //Método para preencher os campos do formulário com dados da tabela
+        GridBagConstraints gbcInterno = new GridBagConstraints();
+        gbcInterno.insets = new Insets(5, 5, 5, 5);
+        gbcInterno.anchor = GridBagConstraints.WEST;
+
+        // Pressão Arterial (campo largo) - Linha 0
+        gbcInterno.gridx = 0; gbcInterno.gridy = 0;
+        gbcInterno.gridwidth = 1; gbcInterno.weightx = 0.0; 
+        gbcInterno.fill = GridBagConstraints.NONE;
+        painelSinaisVitais.add(new JLabel("Pressão Arterial (mmHg):"), gbcInterno);
+
+        gbcInterno.gridx = 1; gbcInterno.gridwidth = 3;
+        gbcInterno.weightx = 1.0; gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelSinaisVitais.add(txtPressaoArterial, gbcInterno);
+
+        // Frequência Cardíaca - Linha 1
+        gbcInterno.gridx = 0; gbcInterno.gridy = 1;
+        gbcInterno.gridwidth = 1; gbcInterno.weightx = 0.0;
+        gbcInterno.fill = GridBagConstraints.NONE;
+        painelSinaisVitais.add(new JLabel("Freq. Cardíaca (bpm):"), gbcInterno);
+
+        gbcInterno.gridx = 1; gbcInterno.gridwidth = 3;
+        gbcInterno.weightx = 1.0; gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelSinaisVitais.add(txtFrequenciaCardiaca, gbcInterno);
+
+        // Frequência Respiratória - Linha 2
+        gbcInterno.gridx = 0; gbcInterno.gridy = 2;
+        gbcInterno.gridwidth = 1; gbcInterno.weightx = 0.0;
+        gbcInterno.fill = GridBagConstraints.NONE;
+        painelSinaisVitais.add(new JLabel("Freq. Resp. (irpm):"), gbcInterno);
+
+        gbcInterno.gridx = 1; gbcInterno.gridwidth = 3;
+        gbcInterno.weightx = 1.0; gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelSinaisVitais.add(txtFrequenciaRespiratoria, gbcInterno);
+
+        // Temperatura - Linha 3
+        gbcInterno.gridx = 0; gbcInterno.gridy = 3;
+        gbcInterno.gridwidth = 1; gbcInterno.weightx = 0.0;
+        gbcInterno.fill = GridBagConstraints.NONE;
+        painelSinaisVitais.add(new JLabel("Temperatura (°C):"), gbcInterno);
+
+        gbcInterno.gridx = 1; gbcInterno.gridwidth = 3;
+        gbcInterno.weightx = 1.0; gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelSinaisVitais.add(txtTemperatura, gbcInterno);
+
+        // Saturação O₂ - Linha 4
+        gbcInterno.gridx = 0; gbcInterno.gridy = 4;
+        gbcInterno.gridwidth = 1; gbcInterno.weightx = 0.0;
+        gbcInterno.fill = GridBagConstraints.NONE;
+        painelSinaisVitais.add(new JLabel("Saturação O₂ (%):"), gbcInterno);
+
+        gbcInterno.gridx = 1; gbcInterno.gridwidth = 3;
+        gbcInterno.weightx = 1.0; gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelSinaisVitais.add(txtSaturacaoOxigenio, gbcInterno);
+
+        // Hemoglicoteste - Linha 5
+        gbcInterno.gridx = 0; gbcInterno.gridy = 5;
+        gbcInterno.gridwidth = 1; gbcInterno.weightx = 0.0;
+        gbcInterno.fill = GridBagConstraints.NONE;
+        painelSinaisVitais.add(new JLabel("Hemoglicoteste (mg/dL):"), gbcInterno);
+
+        gbcInterno.gridx = 1; gbcInterno.gridwidth = 3;
+        gbcInterno.weightx = 1.0; gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelSinaisVitais.add(txtHemoglicoteste, gbcInterno);
+
+        // Adicionar painel ao layout principal
+        gbc.gridx = 0; gbc.gridy = 1;
+        gbc.gridwidth = 4;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        add(painelSinaisVitais, gbc);
+    }
+    
+    private void criarSecaoAntropometrica(GridBagConstraints gbc) {
+        // **MELHORIA**: Seção antropométrica separada
+        JPanel painelAntropometrico = new JPanel(new GridBagLayout());
+        painelAntropometrico.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(BORDER_COLOR), "Dados Antropométricos"));
+        painelAntropometrico.setOpaque(false);
+        
+        GridBagConstraints gbcInterno = new GridBagConstraints();
+        gbcInterno.insets = new Insets(5, 5, 5, 5);
+        gbcInterno.anchor = GridBagConstraints.WEST;
+        
+        // Peso e Altura na mesma linha
+        gbcInterno.gridx = 0; gbcInterno.gridy = 0;
+        gbcInterno.weightx = 0.0; gbcInterno.fill = GridBagConstraints.NONE;
+        painelAntropometrico.add(new JLabel("Peso (kg):"), gbcInterno);
+        
+        gbcInterno.gridx = 1; gbcInterno.weightx = 0.4;
+        gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelAntropometrico.add(txtPeso, gbcInterno);
+        
+        gbcInterno.gridx = 2; gbcInterno.weightx = 0.0;
+        gbcInterno.fill = GridBagConstraints.NONE;
+        painelAntropometrico.add(new JLabel("Altura (m):"), gbcInterno);
+        
+        gbcInterno.gridx = 3; gbcInterno.weightx = 0.6;
+        gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelAntropometrico.add(txtAltura, gbcInterno);
+        
+        // IMC (campo largo, não editável)
+        gbcInterno.gridx = 0; gbcInterno.gridy = 1;
+        gbcInterno.gridwidth = 1; gbcInterno.weightx = 0.0;
+        gbcInterno.fill = GridBagConstraints.NONE;
+        painelAntropometrico.add(new JLabel("IMC (kg/m²):"), gbcInterno);
+        
+        gbcInterno.gridx = 1; gbcInterno.gridwidth = 3;
+        gbcInterno.weightx = 1.0; gbcInterno.fill = GridBagConstraints.HORIZONTAL;
+        painelAntropometrico.add(txtImc, gbcInterno);
+        
+        // Adicionar painel ao layout principal
+        gbc.gridx = 0; gbc.gridy = 2;
+        gbc.gridwidth = 4;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        add(painelAntropometrico, gbc);
+    }
+    
+    private void criarSecaoBotoes(GridBagConstraints gbc) {
+        // **MELHORIA**: Painel de botões centralizado
+        JPanel painelBotoes = new JPanel(new FlowLayout(FlowLayout.CENTER, 2, 0));
+        painelBotoes.setOpaque(false);
+        
+        painelBotoes.add(btnSalvar);
+        painelBotoes.add(btnEditar);
+        painelBotoes.add(btnExcluir);
+        painelBotoes.add(btnImprimir);
+        
+        gbc.gridx = 0; gbc.gridy = 3;
+        gbc.gridwidth = 4;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.insets = new Insets(20, 10, 15, 10);
+        add(painelBotoes, gbc);
+    }
+    
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        
+        // Adicionar listener de redimensionamento
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                adjustLayoutForSize();
+            }
+        });
+    }
+    
+    private void adjustLayoutForSize() {
+        Dimension size = getSize();
+        
+        // **RESPONSIVIDADE**: Ajustar layout baseado no tamanho
+        if (size.width < 400) {
+            // Layout compacto para telas pequenas
+            setMinimumSize(new Dimension(350, 500));
+        } else {
+            // Layout normal
+            setPreferredSize(new Dimension(500, 650));
+        }
+        
+        revalidate();
+        repaint();
+    }
+
+    // Método para preencher os campos do formulário com dados da tabela
     public void preencherCamposComDadosTabela(Paciente patientData) {
-        //System.out.println("preencherCamposComDadosTabela: " + patientData.toString());
         if (patientData != null) {
-            // Preencher os campos com os dados da tabela
             txtPressaoArterial.setText(patientData.getPaXMmhg() != null ? patientData.getPaXMmhg() : "");
             txtFrequenciaCardiaca.setText(patientData.getFcBpm() != null ? patientData.getFcBpm().toString() : "");
             txtFrequenciaRespiratoria.setText(patientData.getFrIbpm() != null ? patientData.getFrIbpm().toString() : "");
@@ -373,7 +394,7 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
             txtImc.setText(patientData.getImc() != null ? patientData.getImc().toString() : "");
             
             aplicarBloqueioCondicional();
-            modoEdicao = false; // Garantir que não está em modo edição
+            modoEdicao = false;
         }
     }
     
@@ -422,18 +443,15 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
     
     public void atualizarEspecialidades(List<Especialidade> especialidades) {
         if (printer != null) {
-            // Atualizar o printer 
             this.printer = new Printer(this, pacienteEspecialidadeService, especialidadeService, especialidades);
         }
         LOGGER.info("Especialidades atualizadas no FormularioSaude2P: " + especialidades.size());
     }
     
-    // Método para configurar eventos
     private void setupEvents() {
-        
         adicionarListenersCamposVazios();
         
-        // Eventos para calcular IMC automaticamente quando peso ou altura mudarem
+        // Eventos para calcular IMC automaticamente
         txtPeso.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
@@ -493,17 +511,13 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
                 imprimirDadosPaciente();
             }
         });
-        
-        
     }
 
-    // Método para calcular IMC automaticamente
     private void calcularImcAutomaticamente() {
         try {
             String pesoStr = txtPeso.getText().replace(",", ".");
             String alturaStr = txtAltura.getText().replace(",", ".");
 
-            // Verifica se ambos os campos têm valores válidos
             if (!pesoStr.isEmpty() && !alturaStr.isEmpty()) {
                 float peso = Float.parseFloat(pesoStr);
                 float altura = Float.parseFloat(alturaStr);
@@ -522,7 +536,6 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
         }
     }
 
-    // Método para obter classificação do IMC
     private String getClassificacaoImc(float imc) {
         if (imc < 18.5) return "Abaixo do peso";
         else if (imc < 25) return "Peso normal";
@@ -532,7 +545,6 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
         else return "Obesidade grau III";
     }
 
-    // Método para salvar paciente FormularioSaude2P
     private void salvarPaciente() {
         // Verifica se há um paciente selecionado
         if (paciente == null || paciente.getNome() == null || paciente.getNome().trim().isEmpty()) {
@@ -542,8 +554,7 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
         }
 
         try {
-            // Atualizar campos de sinais vitais no paciente existente
-            // Converter campos de sinais vitais não vazios
+            // Atualizar campos não vazios
             if (!txtPressaoArterial.getText().isEmpty()) {
                 paciente.setPaXMmhg(txtPressaoArterial.getText().replace(",", "."));
             }
@@ -574,7 +585,6 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
 
             LOGGER.info("Atualizando sinais vitais do paciente via API: " + paciente.toString());
 
-            // Chamar o serviço de atualização (retorna boolean)
             boolean sucesso = pacienteService.atualizar(paciente);
 
             if (!sucesso) {
@@ -583,22 +593,29 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
                 return;
             }
 
-            // NOVA PARTE: Buscar dados atualizados da API para garantir consistência
+            // Buscar dados atualizados
             Paciente pacienteAtualizado = pacienteService.buscarPorId(paciente.getId());
             if (pacienteAtualizado != null) {
-                // Atualiza a referência local
                 this.paciente = pacienteAtualizado;
 
                 // NOTIFICAR OS PAINÉIS DA ATUALIZAÇÃO
                 if (patientUpdateListener != null) {
-                    patientUpdateListener.onPatientUpdated(pacienteAtualizado);
+                    // Executar na EDT para garantir thread safety
+                    SwingUtilities.invokeLater(() -> {
+                        try {
+                            patientUpdateListener.onPatientUpdated(pacienteAtualizado);
+                            System.out.println("✅ PatientUpdateListener notificado com sucesso");
+                        } catch (Exception e) {
+                            System.err.println("❌ Erro ao notificar PatientUpdateListener: " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                    });
                 }
 
-                // Atualizar campos do formulário com dados atualizados
                 preencherCamposComDadosTabela(pacienteAtualizado);
             }
 
-            // Mostrar classificação do IMC quando salvar (se houver)
+            // Mostrar classificação IMC se houver
             if (!txtImc.getText().isEmpty()) {
                 String classificacao = getClassificacaoImc(paciente.getImc());
                 JOptionPane.showMessageDialog(this,
@@ -627,16 +644,13 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
         }
     }
     
-    //Metodo para excluir paciente
     private void excluirPaciente() {
-        // Verifica se há um paciente selecionado
         if (paciente == null || paciente.getId() == 0 || paciente.getNome().trim().isEmpty()) {
             JOptionPane.showMessageDialog(this, "Paciente não selecionado!",
                     "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
         
-        // Confirmar exclusão
         int confirmacao = JOptionPane.showConfirmDialog(this, 
                 "Tem certeza que deseja excluir o paciente: " + paciente.getNome() + "?",
                 "Confirmar Exclusão", 
@@ -650,7 +664,7 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
                 boolean sucesso = pacienteService.deletar(paciente.getId());
 
                 if (sucesso) {
-                    int pacienteId = paciente.getId(); // Salvar ID antes de limpar
+                    int pacienteId = paciente.getId();
 
                     JOptionPane.showMessageDialog(this, "Paciente excluído com sucesso!",
                             "Sucesso", JOptionPane.INFORMATION_MESSAGE);
@@ -661,7 +675,7 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
                     }
 
                     limparCampos();
-                    this.paciente = new Paciente(); // Reset
+                    this.paciente = new Paciente();
                 } else {
                     JOptionPane.showMessageDialog(this, "Erro ao excluir paciente!",
                             "Erro", JOptionPane.ERROR_MESSAGE);
@@ -675,7 +689,6 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
         }
     }
     
-    //Metodo para imprimir
     private void imprimirDadosPaciente() {
         if (paciente == null || paciente.getId() == 0) {
             JOptionPane.showMessageDialog(this, "Paciente não selecionado!",
@@ -686,69 +699,87 @@ public class FormularioSaude2P extends javax.swing.JPanel implements PatientSele
         printer.imprimirDadosPaciente(paciente);
     }
 
-    // Método para limpar campos
-    private void limparCampos() {
-        txtPressaoArterial.setText("");
-        txtFrequenciaCardiaca.setText("");
-        txtFrequenciaRespiratoria.setText("");
-        txtTemperatura.setText("");
-        txtHemoglicoteste.setText("");
-        txtSaturacaoOxigenio.setText("");
-        txtPeso.setText("");
-        txtAltura.setText("");
-        txtImc.setText("");
-        
-        // Resetar estado dos campos
-        modoEdicao = false;
-        aplicarBloqueioCondicional();
-        btnEditar.setText("Editar");
-        btnEditar.setBackground(new Color(255, 152, 0));
-    }
+    public void limparCampos() {
+        System.out.println("=== Limpando campos do FormularioSaude2P ===");
 
+        // Executar limpeza na EDT para garantir thread safety
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Limpar campos de texto
+                if (txtPressaoArterial != null) txtPressaoArterial.setText("");
+                if (txtFrequenciaCardiaca != null) txtFrequenciaCardiaca.setText("");
+                if (txtFrequenciaRespiratoria != null) txtFrequenciaRespiratoria.setText("");
+                if (txtTemperatura != null) txtTemperatura.setText("");
+                if (txtHemoglicoteste != null) txtHemoglicoteste.setText("");
+                if (txtSaturacaoOxigenio != null) txtSaturacaoOxigenio.setText("");
+                if (txtPeso != null) txtPeso.setText("");
+                if (txtAltura != null) txtAltura.setText("");
+                if (txtImc != null) txtImc.setText("");
+
+                System.out.println("✅ Campos de texto limpos");
+
+                // Resetar variáveis de estado de forma thread-safe
+                synchronized (this) {
+                    this.paciente = new Paciente();
+                    System.out.println("✅ Variáveis de estado resetadas");
+                }
+
+                // Resetar estado dos campos e formulário
+                modoEdicao = false;
+                aplicarBloqueioCondicional();
+
+                // Resetar botão editar
+                if (btnEditar != null) {
+                    btnEditar.setText("Editar");
+                    btnEditar.setBackground(new Color(255, 152, 0));
+                }
+
+                // Forçar repaint de todos os componentes
+                revalidate();
+                repaint();
+
+                System.out.println("✅ Campos limpos com sucesso no FormularioSaude2P");
+
+            } catch (Exception e) {
+                System.err.println("❌ Erro ao limpar campos: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
+    }
 
     @Override
     public void onPatientSelected(Paciente patientData) {
-        paciente = patientData;
-        preencherCamposComDadosTabela(patientData);
+        System.out.println("=== onPatientSelected FormularioSaude2P ===");
+        System.out.println("Paciente: " + (patientData != null ? patientData.getNome() + " (ID: " + patientData.getId() + ")" : "NULL"));
+
+        if (patientData != null) {
+            // Verificar se é um paciente diferente do atual
+            boolean mesmoPaciente = (this.paciente != null && 
+                                   this.paciente.getId() != null && 
+                                   patientData.getId() != null &&
+                                   this.paciente.getId().equals(patientData.getId()));
+
+            if (!mesmoPaciente) {
+                System.out.println("Paciente diferente detectado - limpando estado anterior");
+                // Limpar estado anterior apenas se for paciente diferente
+                this.paciente = new Paciente();
+                modoEdicao = false;
+            }
+
+            this.paciente = patientData;
+            preencherCamposComDadosTabela(patientData);
+
+            System.out.println("✅ Paciente configurado no formulário de saúde");
+        } else {
+            // Limpar formulário quando não há seleção
+            limparCampos();
+            System.out.println("✅ Formulário de saúde limpo - nenhum paciente selecionado");
+        }
     }
     
     @Override
     public void onPatientSelected(Paciente patientData, List<PacienteEspecialidade> pacienteEspecialidadeData) {
-        // Para o formulário de saúde, ignoramos as especialidades
-        paciente = patientData;
-        preencherCamposComDadosTabela(patientData);
+        // Delegar para o método principal, já que este formulário não usa especialidades
+        onPatientSelected(patientData);
     }
-
-    // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JMenuBar jMenuBar1;
-    private javax.swing.JMenu jMenu1;
-    private javax.swing.JMenu jMenu2;
-    private javax.swing.JMenu jMenu3;
-
-    private javax.swing.JLabel lblTitulo;
-    private javax.swing.JLabel lblPressaoArterial;
-    private javax.swing.JLabel lblFrequenciaCardiaca;
-    private javax.swing.JLabel lblFrequenciaRespiratoria;
-    private javax.swing.JLabel lblTemperatura;
-    private javax.swing.JLabel lblHemoglicoteste;
-    private javax.swing.JLabel lblSaturacaoOxigenio;
-    private javax.swing.JLabel lblPeso;
-    private javax.swing.JLabel lblAltura;
-    private javax.swing.JLabel lblImc;
-
-    private javax.swing.JTextField txtPressaoArterial;
-    private javax.swing.JTextField txtFrequenciaCardiaca;
-    private javax.swing.JTextField txtFrequenciaRespiratoria;
-    private javax.swing.JTextField txtTemperatura;
-    private javax.swing.JTextField txtHemoglicoteste;
-    private javax.swing.JTextField txtSaturacaoOxigenio;
-    private javax.swing.JTextField txtPeso;
-    private javax.swing.JTextField txtAltura;
-    private javax.swing.JTextField txtImc;
-
-    private javax.swing.JButton btnSalvar;
-    private javax.swing.JButton btnEditar;
-    private javax.swing.JButton btnExcluir;
-    private javax.swing.JButton btnImprimir;
-    // End of variables declaration//GEN-END:variables
 }

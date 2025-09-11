@@ -21,6 +21,8 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Toolkit;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +37,10 @@ import javax.swing.Timer;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.UIManager;
 
 public class Main extends javax.swing.JFrame implements MenuListener, PacienteChangeListener, PacienteEspecialidadeChangeListener, PatientUpdateListener {
     
@@ -72,22 +78,70 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         inicializarSistema();
     }
     
-    /**
-     * Configurações básicas da janela principal
-     */
+    //Configurações básicas da janela principal
     private void configurarJanela() {
         setTitle("Sistema IBG - Gestão de Saúde");
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        
+
+        // Configurações de responsividade recomendadas pelo guia
+        setExtendedState(JFrame.MAXIMIZED_BOTH); // Maximiza automaticamente
+        setMinimumSize(new Dimension(1200, 600)); // Tamanho mínimo
+
         // Registrar como listener do menu
         menu31.addMenuListener(this);
-        
+
+        // Configurar redimensionamento dos painéis
+        configurarPaineisResponsivos();
+
         LOGGER.info("Janela principal configurada");
     }
     
-    /**
-     * Inicialização completa do sistema
-     */
+    //Configura painéis para serem responsivos
+    private void configurarPaineisResponsivos() {
+        // Configurar painel principal (tabelas)
+        if (content != null) {
+            content.setLayout(new BorderLayout());
+            content.setMinimumSize(new Dimension(400, 300));
+        }
+
+        // Configurar painel de formulários
+        if (content2 != null) {
+            content2.setLayout(new BorderLayout());
+            content2.setMinimumSize(new Dimension(300, 400));
+            content2.setPreferredSize(new Dimension(350, 500));
+        }
+
+        // Adicionar listener para ajustes dinâmicos
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                adjustLayout();
+            }
+        });
+    }
+    
+    //Ajusta layout dinamicamente conforme redimensionamento
+    private void adjustLayout() {
+        SwingUtilities.invokeLater(() -> {
+            Dimension windowSize = getSize();
+
+            // Se janela muito pequena, ajustar painéis
+            if (windowSize.width < 1000) {
+                if (content2 != null) {
+                    content2.setPreferredSize(new Dimension(300, content2.getHeight()));
+                }
+            } else {
+                if (content2 != null) {
+                    content2.setPreferredSize(new Dimension(350, content2.getHeight()));
+                }
+            }
+
+            revalidate();
+            repaint();
+        });
+    }
+    
+    //Inicialização completa do sistema
     private void inicializarSistema() {
         SwingUtilities.invokeLater(() -> {
             try {
@@ -117,9 +171,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         });
     }
     
-    /**
-     * Inicializa o painel padrão (Saúde) durante a inicialização do sistema
-     */
+    //Inicializa o painel padrão (Saúde) durante a inicialização do sistema
     private void inicializarPainelPadrao() {
         try {
             LOGGER.info("=== INICIALIZANDO PAINEL PADRÃO (Saúde) ===");
@@ -165,9 +217,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         }
     }
     
-    /**
-     * Inicializa o ApiManager
-     */
+    //Inicializa o ApiManager
     private void inicializarApiManager() {
         try {
             // Carregar configurações
@@ -202,9 +252,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         }
     }
     
-     /**
-     * Carrega configurações da aplicação
-     */
+    //Carrega configurações da aplicação
     private void carregarConfiguracoes() {
         Properties config = new Properties();
         try {
@@ -222,9 +270,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         }
     }
     
-    /**
-     * Inicializa os services
-     */
+    //Inicializa os services
     private void inicializarServices() {
         try {
             pacienteService = apiManager.getPacienteService();
@@ -325,9 +371,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         }
     }
     
-    /**
-     * Inicializa modo offline
-     */
+    //Inicializa modo offline
     private void initializeOfflineMode() {
         LOGGER.info("🔄 Inicializando modo offline...");
         
@@ -349,9 +393,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         });
     }
     
-    /**
-     * Trata erros de inicialização
-     */
+    //Trata erros de inicialização
     private void handleInitializationError(Exception e) {
         inicializando = false;
         
@@ -368,9 +410,7 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
         System.exit(1);
     }
     
-    /**
-     * Registra listeners para notificações em tempo real
-     */
+    //Registra listeners para notificações em tempo real
     private void registrarListeners() {
         try {
             if (apiManager != null) {
@@ -1383,12 +1423,21 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
      * Atualiza o painel principal
      */
     private void refreshContentPainel(Component painel) {
-        if (painel != null) {
-            painel.setSize(800, 640);
-            painel.setLocation(0, 0);
-            
+        if (painel != null && content != null) {
             content.removeAll();
-            content.add(painel, BorderLayout.CENTER);
+
+            // Usar BorderLayout conforme guia
+            if (painel instanceof JPanel) {
+                // Se for tabela, adicionar JScrollPane
+                JScrollPane scrollPane = new JScrollPane(painel);
+                scrollPane.setPreferredSize(new Dimension(600, 400));
+                scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+                scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+                content.add(scrollPane, BorderLayout.CENTER);
+            } else {
+                content.add(painel, BorderLayout.CENTER);
+            }
+
             content.revalidate();
             content.repaint();
         }
@@ -1399,50 +1448,20 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
      */
     private void refreshContentFormulario(Component painel) {
         LOGGER.info("=== refreshContentFormulario INICIADO ===");
-        LOGGER.info("Painel recebido: " + (painel != null ? painel.getClass().getSimpleName() : "NULL"));
-        LOGGER.info("content2 disponível: " + (content2 != null ? "SIM" : "NÃO"));
 
         if (painel != null && content2 != null) {
-            // Debug: Estado antes da atualização
-            LOGGER.info("content2 components antes: " + content2.getComponentCount());
-
-            // Configurar tamanho e posição
-            painel.setSize(500, 640);
-            painel.setLocation(0, 0);
-
-            // Remover conteúdo anterior
             content2.removeAll();
-            LOGGER.info("content2 limpo");
 
-            // Adicionar novo painel
+            // Usar BorderLayout conforme guia
             content2.add(painel, BorderLayout.CENTER);
-            LOGGER.info("Painel adicionado ao content2");
 
-            // Forçar revalidação e repaint
+            // Garantir tamanhos mínimos
+            painel.setMinimumSize(new Dimension(300, 400));
+
             content2.revalidate();
             content2.repaint();
 
-            // Verificar se o painel foi adicionado
-            LOGGER.info("content2 components depois: " + content2.getComponentCount());
-
-            // Tornar visível se necessário
-            if (!painel.isVisible()) {
-                painel.setVisible(true);
-                LOGGER.info("Painel tornado visível");
-            }
-
-            // Debug adicional - verificar hierarquia
-            LOGGER.info("Painel visible: " + painel.isVisible());
-            LOGGER.info("Painel size: " + painel.getSize());
-            LOGGER.info("content2 visible: " + content2.isVisible());
-            LOGGER.info("content2 size: " + content2.getSize());
-
             LOGGER.info("=== refreshContentFormulario CONCLUÍDO ===");
-
-        } else {
-            LOGGER.warning("refreshContentFormulario: painel ou content2 é NULL");
-            if (painel == null) LOGGER.warning("  - painel é NULL");
-            if (content2 == null) LOGGER.warning("  - content2 é NULL");
         }
     }
     
@@ -1557,50 +1576,42 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
+        menu31.setPreferredSize(new java.awt.Dimension(215, 700));
+        getContentPane().add(menu31, java.awt.BorderLayout.LINE_START);
+
         content.setBackground(new java.awt.Color(255, 255, 255));
-        content.setPreferredSize(new java.awt.Dimension(800, 0));
+        content.setMaximumSize(null);
+        content.setName(""); // NOI18N
+        content.setPreferredSize(new java.awt.Dimension(600, 400));
 
         javax.swing.GroupLayout contentLayout = new javax.swing.GroupLayout(content);
         content.setLayout(contentLayout);
         contentLayout.setHorizontalGroup(
             contentLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 800, Short.MAX_VALUE)
+            .addGap(0, 750, Short.MAX_VALUE)
         );
         contentLayout.setVerticalGroup(
             contentLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGap(0, 0, Short.MAX_VALUE)
         );
 
-        content2.setPreferredSize(new java.awt.Dimension(500, 0));
+        getContentPane().add(content, java.awt.BorderLayout.CENTER);
+
+        content2.setMinimumSize(new java.awt.Dimension(300, 400));
+        content2.setPreferredSize(new java.awt.Dimension(550, 500));
 
         javax.swing.GroupLayout content2Layout = new javax.swing.GroupLayout(content2);
         content2.setLayout(content2Layout);
         content2Layout.setHorizontalGroup(
             content2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 500, Short.MAX_VALUE)
+            .addGap(0, 550, Short.MAX_VALUE)
         );
         content2Layout.setVerticalGroup(
             content2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGap(0, 0, Short.MAX_VALUE)
         );
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(menu31, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 0, Short.MAX_VALUE)
-                .addComponent(content, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 0, Short.MAX_VALUE)
-                .addComponent(content2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(menu31, javax.swing.GroupLayout.DEFAULT_SIZE, 640, Short.MAX_VALUE)
-            .addComponent(content, javax.swing.GroupLayout.DEFAULT_SIZE, 640, Short.MAX_VALUE)
-            .addComponent(content2, javax.swing.GroupLayout.DEFAULT_SIZE, 640, Short.MAX_VALUE)
-        );
+        getContentPane().add(content2, java.awt.BorderLayout.EAST);
 
         pack();
         setLocationRelativeTo(null);
@@ -1610,22 +1621,22 @@ public class Main extends javax.swing.JFrame implements MenuListener, PacienteCh
      * @param args the command line arguments
      */
     public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
+        // Configurar Look and Feel do sistema para melhor integração
         try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception e) {
+            // Fallback para Nimbus se disponível
+            try {
+                for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                    if ("Nimbus".equals(info.getName())) {
+                        javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                        break;
+                    }
                 }
+            } catch (Exception ex) {
+                Logger.getLogger(Main.class.getName()).log(Level.SEVERE, "Erro ao configurar Look and Feel", ex);
             }
-        } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         }
-        //</editor-fold>
 
         /* Create and display the form */
         SwingUtilities.invokeLater(() -> {
